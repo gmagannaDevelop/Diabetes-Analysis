@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 
-# In[2]:
+# In[58]:
 
 
 import pandas as pd
@@ -20,6 +20,7 @@ import scipy
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
+import datetime as dt
 
 from typing import List, Dict, NoReturn, Any, Callable, Union, Optional
 import copy
@@ -34,11 +35,12 @@ from sklearn.decomposition import PCA
 from sklearn import preprocessing
 
 
-# In[3]:
+# In[169]:
 
 
 get_ipython().run_line_magic('matplotlib', 'inline')
 plt.rcParams['figure.figsize'] = (15, 8)
+plt.style.use('ggplot')
 
 
 # In[4]:
@@ -67,7 +69,7 @@ def time_indexed_df(df1: pd.core.frame.DataFrame, columname: str) -> pd.core.fra
 ##
 
 
-# In[22]:
+# In[192]:
 
 
 x = pd.read_csv('data/CareLink-Export-03-ene-2020.csv')
@@ -75,31 +77,143 @@ x["DateTime"] =  x["Date"] + " " + x["Time"]
 x.drop(["Date", "Time"], axis=1, inplace=True)
 
 
-# In[23]:
+# In[193]:
 
 
 y = time_indexed_df(x, 'DateTime')
+y['hour'] = y.index.hour
 
 
-# In[24]:
+# In[194]:
 
 
-y = y.loc['2019-10-17':, :]
+# Deltas within minutes
+for i in range(1, 11):
+    y[f'd{i}'] = y['Sensor Glucose (mg/dL)'].diff(i)
 
 
-# In[25]:
+# In[195]:
+
+
+y = y.loc['2019-12-25':, :]
+
+
+# In[196]:
 
 
 y['Sensor Glucose (mg/dL)'].plot()
 
 
-# In[26]:
+# In[197]:
 
 
-sns.distplot(y['Sensor Glucose (mg/dL)'].dropna())
+f, (ax_box, ax_hist) = plt.subplots(2, sharex=True, gridspec_kw={"height_ratios": (.25, .75)})
+sns.boxplot(y['Sensor Glucose (mg/dL)'].dropna(), ax=ax_box)
+sns.stripplot(y['Sensor Glucose (mg/dL)'], color="orange", jitter=0.2, size=2.5, ax=ax_box)
+sns.distplot(y['Sensor Glucose (mg/dL)'].dropna(), ax=ax_hist, kde=True)
+ax_box.set(xlabel='')
 
 
-# In[27]:
+# In[198]:
+
+
+y.columns
+
+
+# In[199]:
+
+
+y.loc[ y['BWZ Carb Input (grams)'].dropna().index, 'BWZ Carb Input (grams)' ].dropna()
+
+
+# In[200]:
+
+
+meal_id = y['BWZ Carb Input (grams)'].dropna().index
+print(len(meal_id))
+
+
+# In[221]:
+
+
+dt10 = dt.timedelta(minutes=10)
+
+
+# In[222]:
+
+
+post_descriptive = pd.core.frame.DataFrame({
+    'preprandial': [ 
+        y.loc[ meal - dt10 : meal + dt10,  'Sensor Glucose (mg/dL)' ].dropna().mean()
+        for meal in meal_id
+    ],
+    'post mean':[
+        y.loc[ 
+            meal + dt.timedelta(hours=1, minutes=30) : meal + dt.timedelta(hours=3), 'Sensor Glucose (mg/dL)'
+        ].dropna().mean() for meal in meal_id
+    ]
+})
+
+
+# In[223]:
+
+
+post_descriptive
+
+
+# In[218]:
+
+
+postp = [
+    y.loc[ 
+        meal + dt.timedelta(hours=1, minutes=30) : meal + dt.timedelta(hours=3), 
+        ['Sensor Glucose (mg/dL)', 'hour', *[f'd{i}' for i in range(1, 11)]] 
+    ].dropna()
+    for meal in meal_id
+]
+
+postp = pd.concat(postp)
+postp.rename({'Sensor Glucose (mg/dL)': 'post points', 'b': 'Y'}, axis='columns', inplace=True)
+postp.head()
+
+
+# In[204]:
+
+
+postp.hour.hist()
+
+
+# In[177]:
+
+
+postp.groupby(postp.index.hour).mean().plot(
+    x='hour', y='Sensor Glucose (mg/dL)', kind='scatter', grid=True, xticks=list(range(24))
+)
+plt.axhline(150, color='blue')
+plt.axhline(200, color='red')
+plt.axhline(70, color='yellow')
+postp.groupby(postp.index.hour).mean().plot(x='hour', y='Sensor Glucose (mg/dL)', color='red')
+
+
+# In[107]:
+
+
+y['Sensor Glucose (mg/dL)'].diff(10).groupby(y.index.hour).mean().plot()
+
+
+# In[187]:
+
+
+
+
+
+# In[190]:
+
+
+y.groupby('hour')['Sensor Glucose (mg/dL)'].mean()
+
+
+# In[112]:
 
 
 hourly_mean = y['Sensor Glucose (mg/dL)'].groupby(y.index.hour).mean()

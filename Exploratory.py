@@ -43,7 +43,7 @@ plt.rcParams['figure.figsize'] = (15, 8)
 plt.style.use('ggplot')
 
 
-# In[4]:
+# In[255]:
 
 
 def time_indexed_df(df1: pd.core.frame.DataFrame, columname: str) -> pd.core.frame.DataFrame:
@@ -66,6 +66,20 @@ def time_indexed_df(df1: pd.core.frame.DataFrame, columname: str) -> pd.core.fra
     _tmp = _tmp.sort_index()
     
     return _tmp
+##
+
+def dist_plot(series: pd.core.series.Series, dropna: bool = True) -> NoReturn:
+    """
+    """
+    
+    if dropna:
+        series = series.dropna()
+    
+    f, (ax_box, ax_hist) = plt.subplots(2, sharex=True, gridspec_kw={"height_ratios": (.25, .75)})
+    sns.boxplot(series, ax=ax_box)
+    sns.stripplot(series, color="orange", jitter=0.2, size=2.5, ax=ax_box)
+    sns.distplot(series, ax=ax_hist, kde=True)
+    ax_box.set(xlabel='')
 ##
 
 
@@ -104,14 +118,20 @@ y = y.loc['2019-12-25':, :]
 y['Sensor Glucose (mg/dL)'].plot()
 
 
-# In[197]:
+# In[254]:
 
 
 f, (ax_box, ax_hist) = plt.subplots(2, sharex=True, gridspec_kw={"height_ratios": (.25, .75)})
 sns.boxplot(y['Sensor Glucose (mg/dL)'].dropna(), ax=ax_box)
-sns.stripplot(y['Sensor Glucose (mg/dL)'], color="orange", jitter=0.2, size=2.5, ax=ax_box)
+sns.stripplot(y['Sensor Glucose (mg/dL)'].dropna(), color="orange", jitter=0.2, size=2.5, ax=ax_box)
 sns.distplot(y['Sensor Glucose (mg/dL)'].dropna(), ax=ax_hist, kde=True)
 ax_box.set(xlabel='')
+
+
+# In[256]:
+
+
+dist_plot(y['Sensor Glucose (mg/dL)'])
 
 
 # In[198]:
@@ -133,32 +153,62 @@ meal_id = y['BWZ Carb Input (grams)'].dropna().index
 print(len(meal_id))
 
 
-# In[221]:
+# In[247]:
 
 
 dt10 = dt.timedelta(minutes=10)
+dtpost_low = dt.timedelta(hours=1, minutes=45)
+dtpost_high = dt.timedelta(hours=2, minutes=45)
 
 
-# In[222]:
+# In[249]:
 
 
-post_descriptive = pd.core.frame.DataFrame({
-    'preprandial': [ 
+meal_descriptive = pd.core.frame.DataFrame({
+    'hour': meal_id.hour, 
+    'pre prandial': [ 
         y.loc[ meal - dt10 : meal + dt10,  'Sensor Glucose (mg/dL)' ].dropna().mean()
         for meal in meal_id
     ],
     'post mean':[
-        y.loc[ 
-            meal + dt.timedelta(hours=1, minutes=30) : meal + dt.timedelta(hours=3), 'Sensor Glucose (mg/dL)'
-        ].dropna().mean() for meal in meal_id
-    ]
-})
+        y.loc[ meal + dtpost_low : meal + dtpost_high, 'Sensor Glucose (mg/dL)'].dropna().mean() 
+        for meal in meal_id
+    ], 
+    'post min':[
+        y.loc[ meal + dtpost_low : meal + dtpost_high, 'Sensor Glucose (mg/dL)'].dropna().min() 
+        for meal in meal_id
+    ],
+    'post max':[
+        y.loc[ meal + dtpost_low : meal + dtpost_high, 'Sensor Glucose (mg/dL)'].dropna().max() 
+        for meal in meal_id
+    ],
+}, index=meal_id)
+
+meal_descriptive['delta'] = meal_descriptive['post mean'] - meal_descriptive['pre prandial'] 
+meal_descriptive.head()
 
 
-# In[223]:
+# In[ ]:
 
 
-post_descriptive
+
+
+
+# In[252]:
+
+
+night     = meal_descriptive[  meal_descriptive.hour < 6 ]
+breakfast = meal_descriptive[ (meal_descriptive.hour >= 6) & (meal_descriptive.hour < 12) ]
+lunch     = meal_descriptive[ (meal_descriptive.hour >= 12) & (meal_descriptive.hour < 18) ]
+evening   = meal_descriptive[ (meal_descriptive.hour >= 18) & (meal_descriptive.hour < 20) ]
+dinner    = meal_descriptive[ (meal_descriptive.hour >= 20) & (meal_descriptive.hour < 24) ]
+
+
+# In[253]:
+
+
+sns.
+breakfast.delta
 
 
 # In[218]:

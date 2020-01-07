@@ -118,42 +118,52 @@ y = y.loc['2019-12-25':, :]
 y['Sensor Glucose (mg/dL)'].plot()
 
 
-# In[254]:
-
-
-f, (ax_box, ax_hist) = plt.subplots(2, sharex=True, gridspec_kw={"height_ratios": (.25, .75)})
-sns.boxplot(y['Sensor Glucose (mg/dL)'].dropna(), ax=ax_box)
-sns.stripplot(y['Sensor Glucose (mg/dL)'].dropna(), color="orange", jitter=0.2, size=2.5, ax=ax_box)
-sns.distplot(y['Sensor Glucose (mg/dL)'].dropna(), ax=ax_hist, kde=True)
-ax_box.set(xlabel='')
-
-
 # In[256]:
 
 
 dist_plot(y['Sensor Glucose (mg/dL)'])
 
 
-# In[198]:
+# In[405]:
 
 
 y.columns
 
 
-# In[199]:
+# In[332]:
 
 
-y.loc[ y['BWZ Carb Input (grams)'].dropna().index, 'BWZ Carb Input (grams)' ].dropna()
+keyword = 'SUSPEND BEFORE LOW'
+alarms  = []
+for i in y.Alarm.dropna().unique().tolist():
+    if keyword in i:
+        alarms.append(i)
+alarms
 
 
-# In[200]:
+# In[344]:
 
 
-meal_id = y['BWZ Carb Input (grams)'].dropna().index
+y[ y.Alarm == 'SUSPEND BEFORE LOW ALARM, QUIET' ].hour.hist()
+
+
+# In[403]:
+
+
+#meal_id = y['BWZ Carb Input (grams)'].dropna().index
+nonull_meals = y['BWZ Carb Input (grams)'].dropna()
+nonull_meals = nonull_meals[ nonull_meals > 0 ]
+meal_id = nonull_meals.index
 print(len(meal_id))
 
 
-# In[247]:
+# In[410]:
+
+
+y.loc[meal_id, 'BWZ Carb Ratio (g/U)'].dropna().index == meal_id
+
+
+# In[386]:
 
 
 dt10 = dt.timedelta(minutes=10)
@@ -161,7 +171,7 @@ dtpost_low = dt.timedelta(hours=1, minutes=45)
 dtpost_high = dt.timedelta(hours=2, minutes=45)
 
 
-# In[271]:
+# In[387]:
 
 
 meal_descriptive = pd.core.frame.DataFrame({
@@ -187,27 +197,56 @@ meal_descriptive = pd.core.frame.DataFrame({
 meal_descriptive['delta'] = meal_descriptive['post mean'] - meal_descriptive['pre prandial'] 
 
 
-# In[273]:
+# In[388]:
 
 
 meal_descriptive.loc[  meal_descriptive.hour < 6, 'meal' ] = 'night'
-meal_descriptive.loc[ (meal_descriptive.hour >= 6) & (meal_descriptive.hour < 12), 'meal'  ] = 'breakfast'
-meal_descriptive.loc[ (meal_descriptive.hour >= 12) & (meal_descriptive.hour < 18), 'meal' ] = 'lunch'
-meal_descriptive.loc[ (meal_descriptive.hour >= 18) & (meal_descriptive.hour < 20), 'meal' ] = 'evening'
-meal_descriptive.loc[ (meal_descriptive.hour >= 20) & (meal_descriptive.hour < 24), 'meal' ] = 'dinner'
+meal_descriptive.loc[ (meal_descriptive.hour >= 6)  & (meal_descriptive.hour < 9), 'meal'  ] = 'breakfast'
+meal_descriptive.loc[ (meal_descriptive.hour >= 9)  & (meal_descriptive.hour < 12), 'meal' ] = 'lunch'
+meal_descriptive.loc[ (meal_descriptive.hour >= 12) & (meal_descriptive.hour < 19), 'meal' ] = 'afternoon'
+meal_descriptive.loc[ (meal_descriptive.hour >= 19) & (meal_descriptive.hour < 24), 'meal' ] = 'dinner'
 
 
-# In[274]:
+# In[389]:
+
+
+ratios = {
+    'night': 12.0,
+    'breakfast': 10.0, 
+    'lunch': 12.0,
+    'afternoon': 12.0,
+    'dinner': 18.0
+}
+
+
+# In[390]:
+
+
+for key, value in ratios.items():
+    meal_descriptive.loc[meal_descriptive.meal == key, 'ratio'] = value 
+
+
+# In[399]:
+
+
+print(meal_descriptive[ meal_descriptive.meal == 'dinner'].describe())
+
+
+# In[315]:
 
 
 meal_descriptive.head()
 
 
-# In[295]:
+# In[317]:
 
 
+column    = 'delta'
+
+print(column, '\n')
 for i in set(meal_descriptive.meal):
-    print(i, '\n', meal_descriptive[ meal_descriptive.meal == i ].describe(), '\n\n')
+    _tmp =  meal_descriptive[ meal_descriptive.meal == i ].describe().T
+    print(i, '\n', f"Mean: {int(_tmp['mean'][column])}, Std: {int(_tmp['std'][column])}", '\n\n')
 
 
 # In[268]:

@@ -161,7 +161,7 @@ dtpost_low = dt.timedelta(hours=1, minutes=45)
 dtpost_high = dt.timedelta(hours=2, minutes=45)
 
 
-# In[249]:
+# In[271]:
 
 
 meal_descriptive = pd.core.frame.DataFrame({
@@ -170,48 +170,47 @@ meal_descriptive = pd.core.frame.DataFrame({
         y.loc[ meal - dt10 : meal + dt10,  'Sensor Glucose (mg/dL)' ].dropna().mean()
         for meal in meal_id
     ],
-    'post mean':[
+    'post mean': [
         y.loc[ meal + dtpost_low : meal + dtpost_high, 'Sensor Glucose (mg/dL)'].dropna().mean() 
         for meal in meal_id
     ], 
-    'post min':[
+    'post min': [
         y.loc[ meal + dtpost_low : meal + dtpost_high, 'Sensor Glucose (mg/dL)'].dropna().min() 
         for meal in meal_id
     ],
-    'post max':[
+    'post max': [
         y.loc[ meal + dtpost_low : meal + dtpost_high, 'Sensor Glucose (mg/dL)'].dropna().max() 
         for meal in meal_id
     ],
 }, index=meal_id)
 
 meal_descriptive['delta'] = meal_descriptive['post mean'] - meal_descriptive['pre prandial'] 
+
+
+# In[273]:
+
+
+meal_descriptive.loc[  meal_descriptive.hour < 6, 'meal' ] = 'night'
+meal_descriptive.loc[ (meal_descriptive.hour >= 6) & (meal_descriptive.hour < 12), 'meal'  ] = 'breakfast'
+meal_descriptive.loc[ (meal_descriptive.hour >= 12) & (meal_descriptive.hour < 18), 'meal' ] = 'lunch'
+meal_descriptive.loc[ (meal_descriptive.hour >= 18) & (meal_descriptive.hour < 20), 'meal' ] = 'evening'
+meal_descriptive.loc[ (meal_descriptive.hour >= 20) & (meal_descriptive.hour < 24), 'meal' ] = 'dinner'
+
+
+# In[274]:
+
+
 meal_descriptive.head()
 
 
-# In[ ]:
+# In[295]:
 
 
+for i in set(meal_descriptive.meal):
+    print(i, '\n', meal_descriptive[ meal_descriptive.meal == i ].describe(), '\n\n')
 
 
-
-# In[252]:
-
-
-night     = meal_descriptive[  meal_descriptive.hour < 6 ]
-breakfast = meal_descriptive[ (meal_descriptive.hour >= 6) & (meal_descriptive.hour < 12) ]
-lunch     = meal_descriptive[ (meal_descriptive.hour >= 12) & (meal_descriptive.hour < 18) ]
-evening   = meal_descriptive[ (meal_descriptive.hour >= 18) & (meal_descriptive.hour < 20) ]
-dinner    = meal_descriptive[ (meal_descriptive.hour >= 20) & (meal_descriptive.hour < 24) ]
-
-
-# In[253]:
-
-
-sns.
-breakfast.delta
-
-
-# In[218]:
+# In[268]:
 
 
 postp = [

@@ -157,10 +157,10 @@ meal_id = nonull_meals.index
 print(len(meal_id))
 
 
-# In[410]:
+# In[413]:
 
 
-y.loc[meal_id, 'BWZ Carb Ratio (g/U)'].dropna().index == meal_id
+y.loc[meal_id, 'BWZ Carb Ratio (g/U)'].dropna().index ==  meal_id
 
 
 # In[386]:
@@ -171,7 +171,7 @@ dtpost_low = dt.timedelta(hours=1, minutes=45)
 dtpost_high = dt.timedelta(hours=2, minutes=45)
 
 
-# In[387]:
+# In[414]:
 
 
 meal_descriptive = pd.core.frame.DataFrame({
@@ -195,9 +195,10 @@ meal_descriptive = pd.core.frame.DataFrame({
 }, index=meal_id)
 
 meal_descriptive['delta'] = meal_descriptive['post mean'] - meal_descriptive['pre prandial'] 
+meal_descriptive['ratio'] = y.loc[meal_id, 'BWZ Carb Ratio (g/U)'].dropna()
 
 
-# In[388]:
+# In[419]:
 
 
 meal_descriptive.loc[  meal_descriptive.hour < 6, 'meal' ] = 'night'
@@ -207,7 +208,13 @@ meal_descriptive.loc[ (meal_descriptive.hour >= 12) & (meal_descriptive.hour < 1
 meal_descriptive.loc[ (meal_descriptive.hour >= 19) & (meal_descriptive.hour < 24), 'meal' ] = 'dinner'
 
 
-# In[389]:
+# In[420]:
+
+
+m2 = meal_descriptive.copy()
+
+
+# In[421]:
 
 
 ratios = {
@@ -219,14 +226,20 @@ ratios = {
 }
 
 
-# In[390]:
+# In[422]:
 
 
 for key, value in ratios.items():
-    meal_descriptive.loc[meal_descriptive.meal == key, 'ratio'] = value 
+    m2.loc[m2.meal == key, 'ratio'] = value 
 
 
-# In[399]:
+# In[424]:
+
+
+meal_descriptive.ratio == m2.ratio
+
+
+# In[423]:
 
 
 print(meal_descriptive[ meal_descriptive.meal == 'dinner'].describe())

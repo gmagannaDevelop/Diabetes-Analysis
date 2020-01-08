@@ -83,7 +83,13 @@ def dist_plot(series: pd.core.series.Series, dropna: bool = True) -> NoReturn:
 ##
 
 
-# In[192]:
+# In[442]:
+
+
+hba1c = lambda x: (x + 105) / 36.5
+
+
+# In[437]:
 
 
 x = pd.read_csv('data/CareLink-Export-03-ene-2020.csv')
@@ -91,14 +97,14 @@ x["DateTime"] =  x["Date"] + " " + x["Time"]
 x.drop(["Date", "Time"], axis=1, inplace=True)
 
 
-# In[193]:
+# In[438]:
 
 
 y = time_indexed_df(x, 'DateTime')
 y['hour'] = y.index.hour
 
 
-# In[194]:
+# In[439]:
 
 
 # Deltas within minutes
@@ -106,31 +112,61 @@ for i in range(1, 11):
     y[f'd{i}'] = y['Sensor Glucose (mg/dL)'].diff(i)
 
 
-# In[195]:
+# In[440]:
+
+
+whole = y.copy()
+
+
+# In[443]:
+
+
+hba1c(whole['Sensor Glucose (mg/dL)'].dropna().mean())
+
+
+# In[444]:
 
 
 y = y.loc['2019-12-25':, :]
 
 
-# In[196]:
+# In[498]:
+
+
+hba1c(y['Sensor Glucose (mg/dL)'].dropna().mean())
+
+
+# In[ ]:
+
+
+
+
+
+# In[445]:
 
 
 y['Sensor Glucose (mg/dL)'].plot()
 
 
-# In[256]:
+# In[446]:
 
 
 dist_plot(y['Sensor Glucose (mg/dL)'])
 
 
-# In[405]:
+# In[ ]:
+
+
+
+
+
+# In[447]:
 
 
 y.columns
 
 
-# In[332]:
+# In[448]:
 
 
 keyword = 'SUSPEND BEFORE LOW'
@@ -141,13 +177,13 @@ for i in y.Alarm.dropna().unique().tolist():
 alarms
 
 
-# In[344]:
+# In[449]:
 
 
 y[ y.Alarm == 'SUSPEND BEFORE LOW ALARM, QUIET' ].hour.hist()
 
 
-# In[403]:
+# In[450]:
 
 
 #meal_id = y['BWZ Carb Input (grams)'].dropna().index
@@ -157,21 +193,21 @@ meal_id = nonull_meals.index
 print(len(meal_id))
 
 
-# In[413]:
+# In[451]:
 
 
 y.loc[meal_id, 'BWZ Carb Ratio (g/U)'].dropna().index ==  meal_id
 
 
-# In[386]:
+# In[483]:
 
 
 dt10 = dt.timedelta(minutes=10)
-dtpost_low = dt.timedelta(hours=1, minutes=45)
-dtpost_high = dt.timedelta(hours=2, minutes=45)
+dtpost_low = dt.timedelta(hours=1, minutes=40)
+dtpost_high = dt.timedelta(hours=2, minutes=20)
 
 
-# In[414]:
+# In[484]:
 
 
 meal_descriptive = pd.core.frame.DataFrame({
@@ -182,6 +218,10 @@ meal_descriptive = pd.core.frame.DataFrame({
     ],
     'post mean': [
         y.loc[ meal + dtpost_low : meal + dtpost_high, 'Sensor Glucose (mg/dL)'].dropna().mean() 
+        for meal in meal_id
+    ],
+    'post std': [
+        y.loc[ meal + dtpost_low : meal + dtpost_high, 'Sensor Glucose (mg/dL)'].dropna().std() 
         for meal in meal_id
     ], 
     'post min': [
@@ -198,7 +238,7 @@ meal_descriptive['delta'] = meal_descriptive['post mean'] - meal_descriptive['pr
 meal_descriptive['ratio'] = y.loc[meal_id, 'BWZ Carb Ratio (g/U)'].dropna()
 
 
-# In[419]:
+# In[485]:
 
 
 meal_descriptive.loc[  meal_descriptive.hour < 6, 'meal' ] = 'night'
@@ -208,50 +248,31 @@ meal_descriptive.loc[ (meal_descriptive.hour >= 12) & (meal_descriptive.hour < 1
 meal_descriptive.loc[ (meal_descriptive.hour >= 19) & (meal_descriptive.hour < 24), 'meal' ] = 'dinner'
 
 
-# In[420]:
-
-
-m2 = meal_descriptive.copy()
-
-
-# In[421]:
-
-
-ratios = {
-    'night': 12.0,
-    'breakfast': 10.0, 
-    'lunch': 12.0,
-    'afternoon': 12.0,
-    'dinner': 18.0
-}
-
-
-# In[422]:
-
-
-for key, value in ratios.items():
-    m2.loc[m2.meal == key, 'ratio'] = value 
-
-
-# In[424]:
-
-
-meal_descriptive.ratio == m2.ratio
-
-
-# In[423]:
-
-
-print(meal_descriptive[ meal_descriptive.meal == 'dinner'].describe())
-
-
-# In[315]:
+# In[486]:
 
 
 meal_descriptive.head()
 
 
-# In[317]:
+# In[494]:
+
+
+meal_descriptive[ meal_descriptive.meal ==  'lunch' ].delta.hist(rwidth=0.8)
+
+
+# In[495]:
+
+
+print(meal_descriptive[ meal_descriptive.meal == 'dinner'].describe())
+
+
+# In[496]:
+
+
+meal_descriptive.head()
+
+
+# In[497]:
 
 
 column    = 'delta'
@@ -262,7 +283,7 @@ for i in set(meal_descriptive.meal):
     print(i, '\n', f"Mean: {int(_tmp['mean'][column])}, Std: {int(_tmp['std'][column])}", '\n\n')
 
 
-# In[268]:
+# In[464]:
 
 
 postp = [
@@ -274,26 +295,29 @@ postp = [
 ]
 
 postp = pd.concat(postp)
-postp.rename({'Sensor Glucose (mg/dL)': 'post points', 'b': 'Y'}, axis='columns', inplace=True)
+postp.rename({
+    'Sensor Glucose (mg/dL)': 'post points', 'b': 'Y'
+}, axis='columns', inplace=True)
+
 postp.head()
 
 
-# In[204]:
+# In[465]:
 
 
 postp.hour.hist()
 
 
-# In[177]:
+# In[466]:
 
 
 postp.groupby(postp.index.hour).mean().plot(
-    x='hour', y='Sensor Glucose (mg/dL)', kind='scatter', grid=True, xticks=list(range(24))
+    x='hour', y='post points', kind='scatter', grid=True, xticks=list(range(24))
 )
 plt.axhline(150, color='blue')
 plt.axhline(200, color='red')
 plt.axhline(70, color='yellow')
-postp.groupby(postp.index.hour).mean().plot(x='hour', y='Sensor Glucose (mg/dL)', color='red')
+postp.groupby(postp.index.hour).mean().plot(x='hour', y='post points', color='red')
 
 
 # In[107]:

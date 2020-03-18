@@ -1,0 +1,47 @@
+
+General Scientific and Educational Licence
+
+Copyright (c) 2020 Gustavo Magaña López
+
+Contact me:
+		gmaganna.biomed <at> gmail.com
+
+1. This software is the result of at least these things:
+	-> Time 	(somebody has/had to write it)
+	-> Creativity	(somebody had an idea thus started it)
+	-> Education	(somebody had to learn stuff to write it)
+
+2. Knowledge should be shared, specially if it can help improve the quality of life of people.
+
+3. With the previous statement in mind (2), here is a list of that you CAN DO with this softare: 
+	-> Download it
+	-> Study it
+	-> Modify it
+	-> Execute it
+	-> Share/Redistribute it (verbatim copies)
+	-> Share/Redistribute it
+	-> Use it to conduct research on any academic level.
+		~> If you do so and your research gets published please acknowledge 
+		   the author and the name of the software, a link to the github repo 
+		   is also a good idea ;).
+	-> Use it to teach/help your students, classmates, assistants, iterns, etc.
+  
+
+4. To respect the work of the original author(s) (1), here is a list of what you CANNOT DO,
+   under any circumstance with this software:
+	-> Use it for commercial purposes without an explicit written permission from the original author(s).
+	-> Commit blatant, subtle, acute or ANY KIND of copyright infringement.	
+
+A note on execution:
+	Please be sure to have legal authorization to access any kind of resource you
+	could want to use with this software (data, computer, software, etc.). 
+	
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO 
+THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. 
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, 
+WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE 
+OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+

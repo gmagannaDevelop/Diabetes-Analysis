@@ -36,7 +36,7 @@ def parse_config(config_file: Optional[str] = None) -> Dict[str,Union[str,bool]]
 
 
 def main():
-    config = parse_config(config_file="lol")
+    config = parse_config()
     data = {
         "dateUTC": str(datetime.datetime.utcnow()).split(" ")[0],
         "config": config

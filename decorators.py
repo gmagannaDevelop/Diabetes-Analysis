@@ -118,9 +118,9 @@ def log_exception_to_mail(subject: str = None, addressee: str = None) -> Callabl
             except Exception as e:
                 EMAIL_FROM = 'gml.automat@gmail.com'
                 EMAIL_TO = addressee or EMAIL_FROM
-                EMAIL_SUBJECT = subject or "Error de ejecución"
-                EMAIL_CONTENT = f"Ocurrió un error al ejecutar la función {f.__name__}\n\n"
-                EMAIL_CONTENT += "Detalles del error :\n" 
+                EMAIL_SUBJECT = subject or "Execution Error"
+                EMAIL_CONTENT = f"An exception was raised from within `{f.__name__}`\n\n"
+                EMAIL_CONTENT += "Traceback copy:\n" 
                 EMAIL_CONTENT += traceback.format_exc()
                 json_cast = lambda x: x if is_jsonable(x) else str(x)
                 data = {
@@ -130,7 +130,7 @@ def log_exception_to_mail(subject: str = None, addressee: str = None) -> Callabl
                     "args": [json_cast(arg) for arg in args],
                     "kwargs": {key:json_cast(kw[key]) for key in kw.keys()},
                 }
-                EMAIL_CONTENT += "\nInformación adicional en fomato JSON:\n"
+                EMAIL_CONTENT += "\nAdditional info (JSON):\n"
                 EMAIL_CONTENT += json.dumps(data)
                 try:
                     service = login()
@@ -142,7 +142,7 @@ def log_exception_to_mail(subject: str = None, addressee: str = None) -> Callabl
                     logger = logging.getLogger()
                     log_header = f"datetime UTC: {data['datetimeUTC']}, LOCAL: {data['datetimeLOCAL']}\n"
                     log_header += f"Impossible sending email `{EMAIL_SUBJECT}` to `{EMAIL_TO}`\n"
-                    log_header += "Error details : \n"
+                    log_header += "Error details:\n"
                     logging.exception(log_header)
                     with open("Errors.log", "a") as fp:
                         fp.write(3*"\n")

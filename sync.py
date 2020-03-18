@@ -29,7 +29,7 @@ def parse_config(config_file: Optional[str] = None) -> Dict[str,Union[str,bool]]
     config_file = config_file or "data_import_config.json"
     ver_dir = os.path.split(config_file)[0] or os.path.abspath(".")
     if os.path.split(config_file)[1] not in os.listdir(ver_dir):
-        raise Exception(f"Config file {os.path.split(config_file)[1]} not found in {ver_dir}")
+        raise Exception(f"Config file `{os.path.split(config_file)[1]}` not found in `{ver_dir}`")
     with open(config_file, "r") as f:
         config = json.load(f)
     return config

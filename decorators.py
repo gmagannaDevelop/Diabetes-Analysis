@@ -133,19 +133,20 @@ def log_exception_to_mail(subject: str = None, addressee: str = None) -> Callabl
                 EMAIL_CONTENT += "\nAdditional info (JSON):\n"
                 EMAIL_CONTENT += json.dumps(data)
                 try:
+                    logging.basicConfig(filename=os.path.join(os.path.abspath("."), "Errors.log"))
+                    logger = logging.getLogger()
+                    logging.exception(EMAIL_CONTENT)
+                    with open("Errors.log", "a") as fp: fp.write(100*"#"+ 2*"\n")
                     service = login()
                     # Call the Gmail API
                     message = create_message(EMAIL_FROM, EMAIL_TO, EMAIL_SUBJECT, EMAIL_CONTENT)
                     sent = send_message(service,'me', message)
                 except:
-                    logging.basicConfig(filename=os.path.join(os.path.abspath("."), "Errors.log"))
-                    logger = logging.getLogger()
                     log_header = f"datetime UTC: {data['datetimeUTC']}, LOCAL: {data['datetimeLOCAL']}\n"
                     log_header += f"Impossible sending email `{EMAIL_SUBJECT}` to `{EMAIL_TO}`\n"
                     log_header += "Error details:\n"
                     logging.exception(log_header)
-                    with open("Errors.log", "a") as fp:
-                        fp.write(3*"\n")
+                    with open("Errors.log", "a") as fp: fp.write(100*"#"+ 3*"\n")
         ##
         return wrap
     ##

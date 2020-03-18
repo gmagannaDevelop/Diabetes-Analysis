@@ -2,7 +2,7 @@
 
 Main side project of [Gustavo Magaña López](https://github.com/gmagannaDevelop)
 
-Contact me at [gmaganna.biomed@gmail.com](gmaganna.biomed@gmail.com).
+Contact me at [gmaganna.biomed@gmail.com](mailto:gmaganna.biomed@gmail.com).
 
 ## Disclaimer :
 This is a personal project. It has two and only two scopes:

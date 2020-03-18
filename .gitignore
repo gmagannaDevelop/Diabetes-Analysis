@@ -1,2 +1,6 @@
 .ipynb_checkpoints/*
 data/*
+credentials.json
+token.pickle
+Errors.log
+__pycache__/*

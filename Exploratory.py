@@ -1,10 +1,11 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[91]:
 
 
 import multiprocessing as mp
+from functools import reduce
 
 import pandas as pd
 
@@ -12,7 +13,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 
-# In[58]:
+# In[40]:
 
 
 import pandas as pd
@@ -35,7 +36,7 @@ from sklearn.decomposition import PCA
 from sklearn import preprocessing
 
 
-# In[169]:
+# In[3]:
 
 
 get_ipython().run_line_magic('matplotlib', 'inline')
@@ -43,7 +44,7 @@ plt.rcParams['figure.figsize'] = (15, 8)
 plt.style.use('ggplot')
 
 
-# In[255]:
+# In[4]:
 
 
 def time_indexed_df(df1: pd.core.frame.DataFrame, columname: str) -> pd.core.frame.DataFrame:
@@ -83,28 +84,28 @@ def dist_plot(series: pd.core.series.Series, dropna: bool = True) -> NoReturn:
 ##
 
 
-# In[442]:
+# In[5]:
 
 
 hba1c = lambda x: (x + 105) / 36.5
 
 
-# In[437]:
+# In[9]:
 
 
-x = pd.read_csv('data/CareLink-Export-03-ene-2020.csv')
+x = pd.read_csv('data/CareLink-Export-16-mar-2020.csv')
 x["DateTime"] =  x["Date"] + " " + x["Time"]
 x.drop(["Date", "Time"], axis=1, inplace=True)
 
 
-# In[438]:
+# In[10]:
 
 
 y = time_indexed_df(x, 'DateTime')
 y['hour'] = y.index.hour
 
 
-# In[439]:
+# In[11]:
 
 
 # Deltas within minutes
@@ -112,25 +113,43 @@ for i in range(1, 11):
     y[f'd{i}'] = y['Sensor Glucose (mg/dL)'].diff(i)
 
 
-# In[440]:
+# In[12]:
 
 
 whole = y.copy()
 
 
-# In[443]:
+# In[13]:
+
+
+whole['ISIG Value'].dropna().count(), whole['Sensor Glucose (mg/dL)'].dropna().count()
+
+
+# We can perform regression ! 
+
+# In[14]:
+
+
+bg_idx = whole['BG Reading (mg/dL)'].dropna().index
+whole.loc[
+    bg_idx - dt.timedelta(minutes=10) : bg_idx + dt.timedelta(minutes=10)
+    , 'Sensor Glucose (mg/dL)'
+]
+
+
+# In[15]:
 
 
 hba1c(whole['Sensor Glucose (mg/dL)'].dropna().mean())
 
 
-# In[444]:
+# In[18]:
 
 
-y = y.loc['2019-12-25':, :]
+y = y.loc['2020-03-01':, :]
 
 
-# In[498]:
+# In[19]:
 
 
 hba1c(y['Sensor Glucose (mg/dL)'].dropna().mean())
@@ -142,13 +161,13 @@ hba1c(y['Sensor Glucose (mg/dL)'].dropna().mean())
 
 
 
-# In[445]:
+# In[20]:
 
 
 y['Sensor Glucose (mg/dL)'].plot()
 
 
-# In[446]:
+# In[21]:
 
 
 dist_plot(y['Sensor Glucose (mg/dL)'])
@@ -160,13 +179,13 @@ dist_plot(y['Sensor Glucose (mg/dL)'])
 
 
 
-# In[447]:
+# In[22]:
 
 
 y.columns
 
 
-# In[448]:
+# In[23]:
 
 
 keyword = 'SUSPEND BEFORE LOW'
@@ -177,13 +196,13 @@ for i in y.Alarm.dropna().unique().tolist():
 alarms
 
 
-# In[449]:
+# In[24]:
 
 
 y[ y.Alarm == 'SUSPEND BEFORE LOW ALARM, QUIET' ].hour.hist()
 
 
-# In[450]:
+# In[46]:
 
 
 #meal_id = y['BWZ Carb Input (grams)'].dropna().index
@@ -193,13 +212,81 @@ meal_id = nonull_meals.index
 print(len(meal_id))
 
 
-# In[451]:
+# In[116]:
+
+
+y.shape, y.drop_duplicates().shape
+
+
+# In[56]:
+
+
+# df.drop(df.loc[x:y].index, inplace=True)
+basal = y.copy()
+for uid in meal_id:
+    if uid+dt.timedelta(hours=2, minutes=40) in basal.index:
+        basal.drop(basal.loc[uid:(uid+dt.timedelta(hours=2, minutes=40))].index, inplace=True)
+
+
+# In[123]:
+
+
+whole.index.get_loc(meal_id[0]), y.index.get_loc(meal_id[0]), basal.index.get_loc(meal_id[0])
+
+
+# In[134]:
+
+
+basal = y.copy()
+for uid in meal_id:
+    real = uid+dt.timedelta(hours=2, minutes=30)
+    #closest = y.index[y.index.get_loc(real, method='nearest')]
+    #print(y.index.get_loc(uid, method='nearest'))
+    closest = y.index[y.index.searchsorted(real) - 1]  # Otherwise it goes out of bounds !
+    #print(f"real : {real}, closest : {y.index[closest]}, closest-1 : {y.index[closest-1]}")
+    basal.loc[uid:closest, 'Sensor Glucose (mg/dL)'] = np.nan
+    #basal.drop(basal.loc[uid:closest].index, inplace=True)
+
+
+# In[67]:
+
+
+y.shape[0] - basal.shape[0] 
+
+
+# In[135]:
+
+
+basal.loc['2020-03-10', 'Sensor Glucose (mg/dL)'].plot()
+
+
+# In[137]:
+
+
+#y.loc['2020-03-14', 'Sensor Glucose (mg/dL)'].interpolate().plot()
+#y.loc['2020-03-14', 'Sensor Glucose (mg/dL)'].interpolate(method='akima').plot()
+y.loc['2020-03-14', 'Sensor Glucose (mg/dL)'].plot()
+
+
+# In[ ]:
+
+
+
+
+
+# In[90]:
+
+
+abs(dt.timedelta(hours=1) - dt.timedelta(hours=2))
+
+
+# In[26]:
 
 
 y.loc[meal_id, 'BWZ Carb Ratio (g/U)'].dropna().index ==  meal_id
 
 
-# In[483]:
+# In[27]:
 
 
 dt10 = dt.timedelta(minutes=10)
@@ -207,7 +294,7 @@ dtpost_low = dt.timedelta(hours=1, minutes=40)
 dtpost_high = dt.timedelta(hours=2, minutes=20)
 
 
-# In[484]:
+# In[28]:
 
 
 meal_descriptive = pd.core.frame.DataFrame({
@@ -238,7 +325,7 @@ meal_descriptive['delta'] = meal_descriptive['post mean'] - meal_descriptive['pr
 meal_descriptive['ratio'] = y.loc[meal_id, 'BWZ Carb Ratio (g/U)'].dropna()
 
 
-# In[485]:
+# In[29]:
 
 
 meal_descriptive.loc[  meal_descriptive.hour < 6, 'meal' ] = 'night'
@@ -248,31 +335,31 @@ meal_descriptive.loc[ (meal_descriptive.hour >= 12) & (meal_descriptive.hour < 1
 meal_descriptive.loc[ (meal_descriptive.hour >= 19) & (meal_descriptive.hour < 24), 'meal' ] = 'dinner'
 
 
-# In[486]:
+# In[30]:
 
 
 meal_descriptive.head()
 
 
-# In[494]:
+# In[31]:
 
 
 meal_descriptive[ meal_descriptive.meal ==  'lunch' ].delta.hist(rwidth=0.8)
 
 
-# In[495]:
+# In[32]:
 
 
 print(meal_descriptive[ meal_descriptive.meal == 'dinner'].describe())
 
 
-# In[496]:
+# In[33]:
 
 
 meal_descriptive.head()
 
 
-# In[497]:
+# In[34]:
 
 
 column    = 'delta'
@@ -283,7 +370,7 @@ for i in set(meal_descriptive.meal):
     print(i, '\n', f"Mean: {int(_tmp['mean'][column])}, Std: {int(_tmp['std'][column])}", '\n\n')
 
 
-# In[464]:
+# In[35]:
 
 
 postp = [
@@ -302,13 +389,13 @@ postp.rename({
 postp.head()
 
 
-# In[465]:
+# In[36]:
 
 
 postp.hour.hist()
 
 
-# In[466]:
+# In[37]:
 
 
 postp.groupby(postp.index.hour).mean().plot(
@@ -320,19 +407,13 @@ plt.axhline(70, color='yellow')
 postp.groupby(postp.index.hour).mean().plot(x='hour', y='post points', color='red')
 
 
-# In[107]:
-
-
-y['Sensor Glucose (mg/dL)'].diff(10).groupby(y.index.hour).mean().plot()
-
-
-# In[187]:
+# In[ ]:
 
 
 
 
 
-# In[190]:
+# In[38]:
 
 
 y.groupby('hour')['Sensor Glucose (mg/dL)'].mean()

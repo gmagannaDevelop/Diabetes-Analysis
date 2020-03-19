@@ -71,6 +71,11 @@ def time_indexed_df(df1: pd.core.frame.DataFrame, columname: str) -> pd.core.fra
 
 def dist_plot(series: pd.core.series.Series, dropna: bool = True) -> NoReturn:
     """
+        Given a pandas Series, generate a descriptive visualisation 
+        with a boxplot and a histogram with a kde.
+        By default, this function drops `nan` values. If you desire to
+        handle them differently, you should do so beforehand and/or
+        specify dropna=False.
     """
     
     if dropna:
@@ -90,7 +95,13 @@ def dist_plot(series: pd.core.series.Series, dropna: bool = True) -> NoReturn:
 hba1c = lambda x: (x + 105) / 36.5
 
 
-# In[56]:
+# In[48]:
+
+
+get_duplicate_idx = lambda w: w[w.index.duplicated(keep=False)].index
+
+
+# In[17]:
 
 
 x = pd.read_csv('data/CareLink-Export-16-mar-2020.csv')
@@ -98,19 +109,152 @@ x["DateTime"] =  x["Date"] + " " + x["Time"]
 x.drop(["Date", "Time"], axis=1, inplace=True)
 
 
-# In[57]:
+# In[20]:
 
 
 y = time_indexed_df(x, 'DateTime')
+y.drop("Index", axis=1, inplace=True)
+
+
+# In[21]:
+
+
+duplicate_idx = y[y.index.duplicated(keep=False)].index
+#duplicate_idx[1]
+
+
+# In[57]:
+
+
+#y.loc[duplicate_idx]
+help(y.mask)
+
+
+# In[59]:
+
+
+z = y.mask( y == np.nan ).groupby(level=0).first()
+
+
+# In[60]:
+
+
+duplicate_idx2 = get_duplicate_idx(z)
+duplicate_idx2
+
+
+# In[61]:
+
+
+y.loc[duplicate_idx[10]].T
+
+
+# In[62]:
+
+
+z.loc[duplicate_idx[10]].T
+
+
+# In[ ]:
+
+
+help(reduce)
+
+
+# In[84]:
+
+
+for i in duplicate_idx:
+    print(y.loc[i])
+    #reduce(lambda x, y: x.combine(y, lambda p, q: p if np.isnan(q) else q), y.loc[i])
+
+
+# In[68]:
+
+
+np.isnan(np.nan)
+
+
+# In[ ]:
+
+
+np.isnan
+
+
+# In[53]:
+
+
 y['hour'] = y.index.hour
 
 
-# In[58]:
+# In[16]:
 
 
-# Deltas within minutes
-for i in [10, 20, 30]: #range(1, 11):
+# Deltas within valuable intervals : 
+for i in [10, 20, 30]: 
     y[f'd{i}'] = y['Sensor Glucose (mg/dL)'].diff(i)
+
+
+# In[26]:
+
+
+#help(pd.Series.diff)
+len(y.groupby(y.index.day)["Sensor Glucose (mg/dL)"])
+
+
+# In[28]:
+
+
+plt.close("all")
+
+
+# In[32]:
+
+
+y[y.duplicated()]
+
+
+# In[36]:
+
+
+y.shape
+
+
+# In[41]:
+
+
+duplicates = y[y.index.duplicated(keep=False)].index
+
+
+# In[46]:
+
+
+help(y.combine)
+
+
+# In[ ]:
+
+
+lambda x:
+
+
+# In[73]:
+
+
+np.isnan(y.loc[duplicates[10], :]["New Device Time"][0])
+
+
+# In[39]:
+
+
+#y.groupby(level=0).filter(lambda x: len(x) > 1)
+
+
+# In[18]:
+
+
+idx = y['Sensor Glucose (mg/dL)'].dropna().index
+y.loc[idx, ['Sensor Glucose (mg/dL)', 'd10', 'd20'] ].head(25)
 
 
 # In[59]:
@@ -223,22 +367,6 @@ print(len(corrections_id))
 corrections_id[:5]
 
 
-# In[71]:
-
-
-# df.drop(df.loc[x:y].index, inplace=True)
-basal = y.copy()
-for uid in meal_id:
-    if uid+dt.timedelta(hours=2, minutes=40) in basal.index:
-        basal.drop(basal.loc[uid:(uid+dt.timedelta(hours=2, minutes=40))].index, inplace=True)
-
-
-# In[72]:
-
-
-#whole.index.get_loc(meal_id[0]), y.index.get_loc(meal_id[0]), basal.index.get_loc(meal_id[0])
-
-
 # In[73]:
 
 
@@ -246,34 +374,30 @@ bolus_id = corrections_id.union(meal_id)
 print(len(bolus_id))
 
 
-# In[74]:
+# In[86]:
 
 
 basal = y.copy()
 for uid in bolus_id:
     real = uid+dt.timedelta(hours=2, minutes=30)
-    #closest = y.index[y.index.get_loc(real, method='nearest')]
-    #print(y.index.get_loc(uid, method='nearest'))
     closest = y.index[y.index.searchsorted(real) - 1]  # Otherwise it goes out of bounds !
-    #print(f"real : {real}, closest : {y.index[closest]}, closest-1 : {y.index[closest-1]}")
     basal.loc[uid:closest, 'Sensor Glucose (mg/dL)'] = np.nan
-    #basal.drop(basal.loc[uid:closest].index, inplace=True)
 
 
-# In[ ]:
-
-
+# In[102]:
 
 
 
-# In[75]:
 
 
-y.loc['2020-03-11', 'Sensor Glucose (mg/dL)'].plot()
-basal.loc['2020-03-11', 'Sensor Glucose (mg/dL)'].plot()
+# In[90]:
 
 
-# In[76]:
+y.loc['2020-03-15', 'Sensor Glucose (mg/dL)'].plot()
+basal.loc['2020-03-15', 'Sensor Glucose (mg/dL)'].plot()
+
+
+# In[92]:
 
 
 basal.groupby(basal.index.hour)['Sensor Glucose (mg/dL)'].mean().plot()
@@ -285,11 +409,11 @@ basal.groupby(basal.index.hour)['Sensor Glucose (mg/dL)'].mean().plot()
 
 
 
-# In[84]:
+# In[93]:
 
 
 figs = [basal.groupby(basal.index.hour)[f'd{i}'].mean().plot(label=f"{i} min") for i in [10, 20, 30]]
-[fig.legend() for fig in figs]
+figs[-1].legend()
 
 
 # In[137]:

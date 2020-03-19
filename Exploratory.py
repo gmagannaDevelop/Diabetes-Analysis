@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[91]:
+# In[1]:
 
 
 import multiprocessing as mp
@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 
-# In[40]:
+# In[2]:
 
 
 import pandas as pd
@@ -90,7 +90,7 @@ def dist_plot(series: pd.core.series.Series, dropna: bool = True) -> NoReturn:
 hba1c = lambda x: (x + 105) / 36.5
 
 
-# In[9]:
+# In[56]:
 
 
 x = pd.read_csv('data/CareLink-Export-16-mar-2020.csv')
@@ -98,28 +98,28 @@ x["DateTime"] =  x["Date"] + " " + x["Time"]
 x.drop(["Date", "Time"], axis=1, inplace=True)
 
 
-# In[10]:
+# In[57]:
 
 
 y = time_indexed_df(x, 'DateTime')
 y['hour'] = y.index.hour
 
 
-# In[11]:
+# In[58]:
 
 
 # Deltas within minutes
-for i in range(1, 11):
+for i in [10, 20, 30]: #range(1, 11):
     y[f'd{i}'] = y['Sensor Glucose (mg/dL)'].diff(i)
 
 
-# In[12]:
+# In[59]:
 
 
 whole = y.copy()
 
 
-# In[13]:
+# In[60]:
 
 
 whole['ISIG Value'].dropna().count(), whole['Sensor Glucose (mg/dL)'].dropna().count()
@@ -127,7 +127,7 @@ whole['ISIG Value'].dropna().count(), whole['Sensor Glucose (mg/dL)'].dropna().c
 
 # We can perform regression ! 
 
-# In[14]:
+# In[11]:
 
 
 bg_idx = whole['BG Reading (mg/dL)'].dropna().index
@@ -137,19 +137,19 @@ whole.loc[
 ]
 
 
-# In[15]:
+# In[61]:
 
 
 hba1c(whole['Sensor Glucose (mg/dL)'].dropna().mean())
 
 
-# In[18]:
+# In[62]:
 
 
 y = y.loc['2020-03-01':, :]
 
 
-# In[19]:
+# In[63]:
 
 
 hba1c(y['Sensor Glucose (mg/dL)'].dropna().mean())
@@ -161,13 +161,13 @@ hba1c(y['Sensor Glucose (mg/dL)'].dropna().mean())
 
 
 
-# In[20]:
+# In[64]:
 
 
 y['Sensor Glucose (mg/dL)'].plot()
 
 
-# In[21]:
+# In[65]:
 
 
 dist_plot(y['Sensor Glucose (mg/dL)'])
@@ -179,13 +179,13 @@ dist_plot(y['Sensor Glucose (mg/dL)'])
 
 
 
-# In[22]:
+# In[66]:
 
 
 y.columns
 
 
-# In[23]:
+# In[67]:
 
 
 keyword = 'SUSPEND BEFORE LOW'
@@ -196,13 +196,13 @@ for i in y.Alarm.dropna().unique().tolist():
 alarms
 
 
-# In[24]:
+# In[68]:
 
 
 y[ y.Alarm == 'SUSPEND BEFORE LOW ALARM, QUIET' ].hour.hist()
 
 
-# In[46]:
+# In[69]:
 
 
 #meal_id = y['BWZ Carb Input (grams)'].dropna().index
@@ -210,15 +210,20 @@ nonull_meals = y['BWZ Carb Input (grams)'].dropna()
 nonull_meals = nonull_meals[ nonull_meals > 0 ]
 meal_id = nonull_meals.index
 print(len(meal_id))
+meal_id[:5]
 
 
-# In[116]:
+# In[70]:
 
 
-y.shape, y.drop_duplicates().shape
+nonull_corrections = y['BWZ Correction Estimate (U)'].dropna()
+nonull_corrections = nonull_corrections[ nonull_corrections > 0 ]
+corrections_id = nonull_corrections.index
+print(len(corrections_id))
+corrections_id[:5]
 
 
-# In[56]:
+# In[71]:
 
 
 # df.drop(df.loc[x:y].index, inplace=True)
@@ -228,17 +233,24 @@ for uid in meal_id:
         basal.drop(basal.loc[uid:(uid+dt.timedelta(hours=2, minutes=40))].index, inplace=True)
 
 
-# In[123]:
+# In[72]:
 
 
-whole.index.get_loc(meal_id[0]), y.index.get_loc(meal_id[0]), basal.index.get_loc(meal_id[0])
+#whole.index.get_loc(meal_id[0]), y.index.get_loc(meal_id[0]), basal.index.get_loc(meal_id[0])
 
 
-# In[134]:
+# In[73]:
+
+
+bolus_id = corrections_id.union(meal_id)
+print(len(bolus_id))
+
+
+# In[74]:
 
 
 basal = y.copy()
-for uid in meal_id:
+for uid in bolus_id:
     real = uid+dt.timedelta(hours=2, minutes=30)
     #closest = y.index[y.index.get_loc(real, method='nearest')]
     #print(y.index.get_loc(uid, method='nearest'))
@@ -248,16 +260,36 @@ for uid in meal_id:
     #basal.drop(basal.loc[uid:closest].index, inplace=True)
 
 
-# In[67]:
+# In[ ]:
 
 
-y.shape[0] - basal.shape[0] 
 
 
-# In[135]:
+
+# In[75]:
 
 
-basal.loc['2020-03-10', 'Sensor Glucose (mg/dL)'].plot()
+y.loc['2020-03-11', 'Sensor Glucose (mg/dL)'].plot()
+basal.loc['2020-03-11', 'Sensor Glucose (mg/dL)'].plot()
+
+
+# In[76]:
+
+
+basal.groupby(basal.index.hour)['Sensor Glucose (mg/dL)'].mean().plot()
+
+
+# In[ ]:
+
+
+
+
+
+# In[84]:
+
+
+figs = [basal.groupby(basal.index.hour)[f'd{i}'].mean().plot(label=f"{i} min") for i in [10, 20, 30]]
+[fig.legend() for fig in figs]
 
 
 # In[137]:

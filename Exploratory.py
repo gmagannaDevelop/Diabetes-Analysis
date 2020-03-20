@@ -36,15 +36,22 @@ from sklearn.decomposition import PCA
 from sklearn import preprocessing
 
 
-# In[3]:
+# In[197]:
+
+
+print(plt.style.available)
+styles = plt.style.available
+
+
+# In[200]:
 
 
 get_ipython().run_line_magic('matplotlib', 'inline')
 plt.rcParams['figure.figsize'] = (15, 8)
-plt.style.use('ggplot')
+plt.style.use('Solarize_Light2')
 
 
-# In[96]:
+# In[204]:
 
 
 def time_indexed_df(df1: pd.core.frame.DataFrame, columname: str) -> pd.core.frame.DataFrame:
@@ -113,6 +120,26 @@ def merge_on_duplicate_idx(
     return y
 ##
 
+def comparative_hba1c_plot(
+    df: pd.core.frame.DataFrame,
+    colum_name: str = "Sensor Glucose (mg/dL)",
+    hba1c: Callable = lambda x: (x + 105) / 36.5,
+    windows: Dict[str,int] = {
+        "weekly": 7,
+        "monthly": 30
+    }
+) -> NoReturn:
+    """
+        
+    """
+    df.groupby(df.index.dayofyear)[colum_name].mean().apply(hba1c).plot(**{"label":"daily"})
+    for key, value in windows.items():
+        df.groupby(df.index.dayofyear)[colum_name].mean().rolling(value).mean().apply(hba1c).plot(**{"label":key})
+    mean_hba1c = hba1c(df[colum_name].mean()) 
+    plt.axhline(mean_hba1c, **{"label": f"mean = {round(mean_hba1c,1)}", "c": "blue"})
+    plt.legend()
+##
+
 
 # In[5]:
 
@@ -174,50 +201,20 @@ y['y(t)'] = min_res_t_series.apply(lambda x: np.sin(2*np.pi*(x) / T))
 # sns.scatterplot(x="x(t)", y="y(t)", data=y)
 
 
-# In[146]:
-
-
-duplicates = y[y.index.duplicated(keep=False)].index
-
-
-# In[67]:
-
-
-#help(y.combine)
-
-
-# In[ ]:
-
-
-lambda x:
-
-
-# In[73]:
-
-
-np.isnan(y.loc[duplicates[10], :]["New Device Time"][0])
-
-
-# In[39]:
-
-
-#y.groupby(level=0).filter(lambda x: len(x) > 1)
-
-
-# In[147]:
+# In[151]:
 
 
 idx = y['Sensor Glucose (mg/dL)'].dropna().index
-y.loc[idx, ['Sensor Glucose (mg/dL)', 'd10', 'd20'] ].head(25)
+#y.loc[idx, ['Sensor Glucose (mg/dL)', 'd10', 'd20'] ].head(25)
 
 
-# In[131]:
+# In[152]:
 
 
 whole = y.copy()
 
 
-# In[132]:
+# In[153]:
 
 
 whole['ISIG Value'].dropna().count(), whole['Sensor Glucose (mg/dL)'].dropna().count()
@@ -225,20 +222,34 @@ whole['ISIG Value'].dropna().count(), whole['Sensor Glucose (mg/dL)'].dropna().c
 
 # We can perform regression ! 
 
-# In[11]:
+# In[154]:
 
 
+"""
 bg_idx = whole['BG Reading (mg/dL)'].dropna().index
 whole.loc[
     bg_idx - dt.timedelta(minutes=10) : bg_idx + dt.timedelta(minutes=10)
     , 'Sensor Glucose (mg/dL)'
 ]
+"""
 
 
-# In[61]:
+# In[155]:
 
 
 hba1c(whole['Sensor Glucose (mg/dL)'].dropna().mean())
+
+
+# In[207]:
+
+
+comparative_hba1c_plot(whole)
+
+
+# In[166]:
+
+
+whole.groupby(whole.index.weekofyear)["Sensor Glucose (mg/dL)"].mean().apply(hba1c).plot()
 
 
 # In[62]:

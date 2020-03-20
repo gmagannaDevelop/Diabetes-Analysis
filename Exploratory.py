@@ -134,12 +134,13 @@ x["DateTime"] =  x["Date"] + " " + x["Time"]
 x.drop(["Date", "Time"], axis=1, inplace=True)
 
 
-# In[99]:
+# In[148]:
 
 
 y = time_indexed_df(x, 'DateTime')
 y.drop("Index", axis=1, inplace=True)
 y = merge_on_duplicate_idx(y, verbose=True)
+z = y.copy()
 
 
 # In[100]:
@@ -153,7 +154,7 @@ y = y.mask( y == np.nan ).groupby(level=0).first()
 """
 
 
-# In[104]:
+# In[149]:
 
 
 # Useful having an hour column :
@@ -163,7 +164,7 @@ for i in [10, 20, 30]:
     y[f'd{i}'] = y['Sensor Glucose (mg/dL)'].diff(i)
 
 
-# In[144]:
+# In[150]:
 
 
 T = 1439
@@ -173,7 +174,7 @@ y['y(t)'] = min_res_t_series.apply(lambda x: np.sin(2*np.pi*(x) / T))
 # sns.scatterplot(x="x(t)", y="y(t)", data=y)
 
 
-# In[41]:
+# In[146]:
 
 
 duplicates = y[y.index.duplicated(keep=False)].index
@@ -203,7 +204,7 @@ np.isnan(y.loc[duplicates[10], :]["New Device Time"][0])
 #y.groupby(level=0).filter(lambda x: len(x) > 1)
 
 
-# In[18]:
+# In[147]:
 
 
 idx = y['Sensor Glucose (mg/dL)'].dropna().index

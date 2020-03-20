@@ -43,15 +43,15 @@ print(plt.style.available)
 styles = plt.style.available
 
 
-# In[200]:
+# In[260]:
 
 
 get_ipython().run_line_magic('matplotlib', 'inline')
+plt.style.use('seaborn')
 plt.rcParams['figure.figsize'] = (15, 8)
-plt.style.use('Solarize_Light2')
 
 
-# In[204]:
+# In[242]:
 
 
 def time_indexed_df(df1: pd.core.frame.DataFrame, columname: str) -> pd.core.frame.DataFrame:
@@ -138,6 +138,52 @@ def comparative_hba1c_plot(
     mean_hba1c = hba1c(df[colum_name].mean()) 
     plt.axhline(mean_hba1c, **{"label": f"mean = {round(mean_hba1c,1)}", "c": "blue"})
     plt.legend()
+##
+
+def probability_estimate(
+    data: pd.core.series.Series, 
+    start: float, 
+    end: float, 
+    N: int = 250,
+    percentage: bool = False,
+    show_plots: bool = False
+) -> float:
+    """
+    """
+    
+    # Plot the data using a normalized histogram
+    dev = copy.deepcopy(data)
+    dev = dev.dropna().apply(int)
+    
+    x = np.linspace(dev.min(), min(data), max(data))[:, np.newaxis]
+
+    # Do kernel density estimation
+    kd = KernelDensity(kernel='gaussian', bandwidth=0.85).fit(np.array(dev).reshape(-1, 1))
+
+    # Plot the estimated densty
+    kd_vals = np.exp(kd.score_samples(x))
+
+    # Show the plots
+    if show_plots:
+        plt.plot(x, kd_vals)
+        plt.hist(dev, 50, normed=True)
+        plt.xlabel('Concentration mg/dl')
+        plt.ylabel('Density')
+        plt.title('Probability Density Esimation')
+        plt.show()
+
+    #probability = integrate(lambda x: np.exp(kd.score_samples(x.reshape(-1, 1))), start, end)[0]
+    
+    # Integration :
+    step = (end - start) / (N - 1)  # Step size
+    x = np.linspace(start, end, N)[:, np.newaxis]  # Generate values in the range
+    kd_vals = np.exp(kd.score_samples(x))  # Get PDF values for each x
+    probability = np.sum(kd_vals * step)  # Approximate the integral of the PDF
+    
+    if percentage:
+        probability *= 100
+    
+    return probability
 ##
 
 
@@ -240,61 +286,47 @@ whole.loc[
 hba1c(whole['Sensor Glucose (mg/dL)'].dropna().mean())
 
 
-# In[207]:
+# In[225]:
 
 
 comparative_hba1c_plot(whole)
+dist_plot(whole['Sensor Glucose (mg/dL)'])
 
 
-# In[166]:
+# # Last 15 days
+
+# In[222]:
 
 
-whole.groupby(whole.index.weekofyear)["Sensor Glucose (mg/dL)"].mean().apply(hba1c).plot()
+y = y.loc["2020-03-01":, :]
 
 
-# In[62]:
+# In[261]:
 
 
-y = y.loc['2020-03-01':, :]
-
-
-# In[63]:
-
-
-hba1c(y['Sensor Glucose (mg/dL)'].dropna().mean())
-
-
-# In[ ]:
-
-
-
-
-
-# In[64]:
-
-
-y['Sensor Glucose (mg/dL)'].plot()
-
-
-# In[65]:
-
-
+comparative_hba1c_plot(y)
 dist_plot(y['Sensor Glucose (mg/dL)'])
 
 
-# In[ ]:
+# In[244]:
 
 
+#probability_estimate(y["Sensor Glucose (mg/dL)"], 150, 300, percentage=True)
 
 
-
-# In[66]:
-
-
-y.columns
+# In[245]:
 
 
-# In[67]:
+#y["Sensor Glucose (mg/dL)"].dropna().apply(int)
+
+
+# In[246]:
+
+
+#"dropna" in dir(pd.Series)
+
+
+# In[247]:
 
 
 keyword = 'SUSPEND BEFORE LOW'
@@ -305,13 +337,13 @@ for i in y.Alarm.dropna().unique().tolist():
 alarms
 
 
-# In[68]:
+# In[262]:
 
 
 y[ y.Alarm == 'SUSPEND BEFORE LOW ALARM, QUIET' ].hour.hist()
 
 
-# In[69]:
+# In[249]:
 
 
 #meal_id = y['BWZ Carb Input (grams)'].dropna().index
@@ -322,7 +354,7 @@ print(len(meal_id))
 meal_id[:5]
 
 
-# In[70]:
+# In[250]:
 
 
 nonull_corrections = y['BWZ Correction Estimate (U)'].dropna()
@@ -332,14 +364,14 @@ print(len(corrections_id))
 corrections_id[:5]
 
 
-# In[73]:
+# In[251]:
 
 
 bolus_id = corrections_id.union(meal_id)
 print(len(bolus_id))
 
 
-# In[86]:
+# In[252]:
 
 
 basal = y.copy()
@@ -349,20 +381,48 @@ for uid in bolus_id:
     basal.loc[uid:closest, 'Sensor Glucose (mg/dL)'] = np.nan
 
 
-# In[102]:
+# In[269]:
 
 
+y.columns
 
 
-
-# In[90]:
-
-
-y.loc['2020-03-15', 'Sensor Glucose (mg/dL)'].plot()
-basal.loc['2020-03-15', 'Sensor Glucose (mg/dL)'].plot()
+# In[284]:
 
 
-# In[92]:
+bolus = pd.DataFrame(columns=['Sensor Glucose (mg/dL)', 'ISIG Value', 'Event Marker', 'hour', 'd10', 'd20', 'd30', 'x(t)', 'y(t)'], index=y.index)
+
+
+# In[292]:
+
+
+for uid in bolus_id:
+    real = uid+dt.timedelta(hours=2, minutes=30)
+    closest = y.index[y.index.searchsorted(real) - 1]  # Otherwise it goes out of bounds !
+    bolus.loc[uid:closest, bolus.columns] = y.loc[uid:closest, bolus.columns]
+
+
+# In[299]:
+
+
+bolus.loc[ bolus["Sensor Glucose (mg/dL)"].dropna().index, : ]
+
+
+# In[291]:
+
+
+y.loc[bolus_id[5], bolus.columns]
+
+
+# In[263]:
+
+
+y.loc['2020-03-15', 'Sensor Glucose (mg/dL)'].plot(**{"label": "Full"})
+basal.loc['2020-03-15', 'Sensor Glucose (mg/dL)'].plot(**{"label": "basal"})
+plt.legend()
+
+
+# In[264]:
 
 
 basal.groupby(basal.index.hour)['Sensor Glucose (mg/dL)'].mean().plot()
@@ -374,7 +434,7 @@ basal.groupby(basal.index.hour)['Sensor Glucose (mg/dL)'].mean().plot()
 
 
 
-# In[93]:
+# In[265]:
 
 
 figs = [basal.groupby(basal.index.hour)[f'd{i}'].mean().plot(label=f"{i} min") for i in [10, 20, 30]]

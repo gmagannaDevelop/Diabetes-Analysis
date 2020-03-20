@@ -44,7 +44,7 @@ plt.rcParams['figure.figsize'] = (15, 8)
 plt.style.use('ggplot')
 
 
-# In[4]:
+# In[96]:
 
 
 def time_indexed_df(df1: pd.core.frame.DataFrame, columname: str) -> pd.core.frame.DataFrame:
@@ -89,6 +89,31 @@ def dist_plot(series: pd.core.series.Series, dropna: bool = True) -> NoReturn:
 ##
 
 
+def merge_on_duplicate_idx(
+    df: pd.core.frame.DataFrame, 
+    mask: Any = np.nan,
+    verbose: bool = False
+) -> pd.core.frame.DataFrame:
+    """
+    """
+    
+    y = df.copy()
+    y = y.mask( y == mask ).groupby(level=0).first()
+    
+    if verbose:
+        original_rows = df.shape[0]
+        duplicate_idx = df[df.index.duplicated(keep=False)].index
+        duplicate_rows = df.loc[duplicate_idx].shape[0]
+        new_rows = y.shape[0]
+        print(f" Total rows on source dataframe :\t{original_rows}")
+        print(f" Duplicate indices :\t\t\t{duplicate_idx.shape[0]}")
+        print(f" Total duplicate rows :\t\t\t{duplicate_rows}")
+        print(f" Rows on pruned dataframe :\t\t{new_rows}")
+    
+    return y
+##
+
+
 # In[5]:
 
 
@@ -109,115 +134,43 @@ x["DateTime"] =  x["Date"] + " " + x["Time"]
 x.drop(["Date", "Time"], axis=1, inplace=True)
 
 
-# In[20]:
+# In[99]:
 
 
 y = time_indexed_df(x, 'DateTime')
 y.drop("Index", axis=1, inplace=True)
+y = merge_on_duplicate_idx(y, verbose=True)
 
 
-# In[21]:
+# In[100]:
 
 
+# Removing duplicates : 
+"""
 duplicate_idx = y[y.index.duplicated(keep=False)].index
-#duplicate_idx[1]
+print(duplicate_idx.shape)
+y = y.mask( y == np.nan ).groupby(level=0).first()
+"""
 
 
-# In[57]:
+# In[104]:
 
 
-#y.loc[duplicate_idx]
-help(y.mask)
-
-
-# In[59]:
-
-
-z = y.mask( y == np.nan ).groupby(level=0).first()
-
-
-# In[60]:
-
-
-duplicate_idx2 = get_duplicate_idx(z)
-duplicate_idx2
-
-
-# In[61]:
-
-
-y.loc[duplicate_idx[10]].T
-
-
-# In[62]:
-
-
-z.loc[duplicate_idx[10]].T
-
-
-# In[ ]:
-
-
-help(reduce)
-
-
-# In[84]:
-
-
-for i in duplicate_idx:
-    print(y.loc[i])
-    #reduce(lambda x, y: x.combine(y, lambda p, q: p if np.isnan(q) else q), y.loc[i])
-
-
-# In[68]:
-
-
-np.isnan(np.nan)
-
-
-# In[ ]:
-
-
-np.isnan
-
-
-# In[53]:
-
-
+# Useful having an hour column :
 y['hour'] = y.index.hour
-
-
-# In[16]:
-
-
 # Deltas within valuable intervals : 
 for i in [10, 20, 30]: 
     y[f'd{i}'] = y['Sensor Glucose (mg/dL)'].diff(i)
 
 
-# In[26]:
+# In[144]:
 
 
-#help(pd.Series.diff)
-len(y.groupby(y.index.day)["Sensor Glucose (mg/dL)"])
-
-
-# In[28]:
-
-
-plt.close("all")
-
-
-# In[32]:
-
-
-y[y.duplicated()]
-
-
-# In[36]:
-
-
-y.shape
+T = 1439
+min_res_t_series = pd.Series(y.hour*60 + y.index.minute)
+y['x(t)'] = min_res_t_series.apply(lambda x: np.cos(2*np.pi*(x) / T))
+y['y(t)'] = min_res_t_series.apply(lambda x: np.sin(2*np.pi*(x) / T))
+# sns.scatterplot(x="x(t)", y="y(t)", data=y)
 
 
 # In[41]:
@@ -226,10 +179,10 @@ y.shape
 duplicates = y[y.index.duplicated(keep=False)].index
 
 
-# In[46]:
+# In[67]:
 
 
-help(y.combine)
+#help(y.combine)
 
 
 # In[ ]:
@@ -257,13 +210,13 @@ idx = y['Sensor Glucose (mg/dL)'].dropna().index
 y.loc[idx, ['Sensor Glucose (mg/dL)', 'd10', 'd20'] ].head(25)
 
 
-# In[59]:
+# In[131]:
 
 
 whole = y.copy()
 
 
-# In[60]:
+# In[132]:
 
 
 whole['ISIG Value'].dropna().count(), whole['Sensor Glucose (mg/dL)'].dropna().count()

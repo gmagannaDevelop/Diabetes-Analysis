@@ -44,7 +44,7 @@ def get_csv_files(path: str) -> List[str]:
         Get a list containing all filenames
         found in `path` that contain "csv".
     """
-    return [name for name in os.listdir(path) if "csv" in name]
+    return [name for name in os.listdir(path) if name[-4:] == ".csv"]
 ##
 
 @decorators.log_exception_to_mail(subject="CSV list generation error")

@@ -93,20 +93,24 @@ def main(logfile: Optional[str] = None):
     if logfile not in os.listdir("."):
         with open(logfile, "w") as f:
             f.write(f"{json.dumps(data)}\n")
-
-        print(f"{get_csv_abspaths(data)}")
+        for csv_file in get_csv_abspaths(data):
+            shutil.copy2(csv_file, config["tmp"])
+        # print(f"{get_csv_abspaths(data)}")
+    
     else:
         with open(logfile, "r") as f:
             last_log = json.loads(f.read().splitlines()[-1])
 
         if data['logs'] == last_log['logs']:
             print("No new logs")
-            print(f"{get_csv_abspaths(data)}")
+            #print(f"{get_csv_abspaths(data)}")
         else:
             with open(logfile, "a") as f:
                 f.write(f"{json.dumps(data)}\n")
+            for csv_file in get_csv_abspaths(data):
+                shutil.copy2(csv_file, config["tmp"])
 
-            print(f"{get_csv_abspaths(data)}")
+            # print(f"{get_csv_abspaths(data)}")
             print("New logs!")
         print(f"last log {last_log}")
     

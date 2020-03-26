@@ -13,6 +13,14 @@ This is a personal project. It has two and only two scopes:
 If you decide to test it on yourself it is **YOUR RESPONSIBILITY**. Nothing within this repo is enodorsed by Medtronic or MySugr App. I am merely a patient using his own data and applying algorithms to it. 
 
 
+## Bibliography 
+This project departed from my own knowledge of diabetes physiopathology. However, to make of this a valuable state-of-the-art tool I have decided to add also some docs. Publicly available scientific papers. These will be found in ```Docs/```. If you want to consult them, these are the original sources:
+
+1. [review\_of\_formulas.pdf](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4960276/)
+
+If you have found anything that you consider pertinent/valuable for this project and have the proper copyright/ownership rights to share it, please do so! I'd be ravished to include it in the project ([email it to me](mailto:gmaganna.biomed@gmail.com), or add it to your fork of this repo and send me a pull request).
+
+
 ## Requirements and dependencies :
 ### Tested Hardware
 This software has only been tested on a [13-inch, Mid 2012 MacBookPro](https://support.apple.com/en-us/HT201624) which is considered *vintage* (a.k.a. pre-obsolete). I've tampered with it, so it has 8 GiB RAM and a Samsung 1TB SSD.

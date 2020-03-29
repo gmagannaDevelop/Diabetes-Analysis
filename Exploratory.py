@@ -224,26 +224,32 @@ files = get_csv_files("data/newest/")
 files
 
 
-# In[13]:
+# In[38]:
 
 
 the_file = files[0]
+x = pd.read_csv(the_file)
+# x.columns
 
 
 # Read the csv file, and inspect the columns. Our ```time_indexed_df``` function requires a single column containing "Datetime". For this purpose we calculate it by concatenating the **Date** and **Time** columns from the csv.
 
-# In[14]:
+# In[40]:
 
 
-x = pd.read_csv(the_file)
-#x.columns
 x["DateTime"] =  x["Date"] + " " + x["Time"]
 x.drop(["Date", "Time"], axis=1, inplace=True)
 
 
+# In[43]:
+
+
+x.head(3)
+
+
 # Here we create a *date_time-indexed dataframe*. Afterwards we drop the original, useless, "Index" column. We then merge on duplicate indices as the Pump system logs a separate entry for each event, even when they occur simultaneously.
 
-# In[15]:
+# In[44]:
 
 
 y = time_indexed_df(x, 'DateTime')
@@ -263,6 +269,26 @@ duplicate_idx = y[y.index.duplicated(keep=False)].index
 print(duplicate_idx.shape)
 y = y.mask( y == np.nan ).groupby(level=0).first()
 """
+
+
+# In[50]:
+
+
+# Remove unnecessary seconds resolution from datetime-index : 
+y.index = y.index.map(lambda t: t.replace(second=0))
+
+
+# In[63]:
+
+
+#help(y.resample)
+w = y.resample("1T").apply(lambda x: x)
+
+
+# In[64]:
+
+
+y.index[:10], w.index[:10]
 
 
 # In[17]:

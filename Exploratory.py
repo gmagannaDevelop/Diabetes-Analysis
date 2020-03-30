@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[223]:
 
 
 import os
 import multiprocessing as mp
-from functools import reduce
+from functools import reduce, partial
 
 import pandas as pd
 
@@ -59,7 +59,7 @@ plt.style.use('seaborn')
 plt.rcParams['figure.figsize'] = (15, 8)
 
 
-# In[6]:
+# In[147]:
 
 
 def time_indexed_df(df1: pd.core.frame.DataFrame, columname: str) -> pd.core.frame.DataFrame:
@@ -195,36 +195,104 @@ def probability_estimate(
     return probability
 ##
 
+def hybrid_interpolator(
+    data: pd.core.series.Series,
+    mean: float = None,
+    limit: float = None,
+    methods: List[str] = ['linear', 'spline'], 
+    weights: List[float] = [0.65, 0.35],
+    direction: str = 'forward',
+    order: int = 2
+) -> pd.core.series.Series:
+    """
+    Return a pandas.core.series.Series instance resulting of the weighted average
+    of two interpolation methods.
+    
+    Model:
+        φ = β1*method1 + β2*method2
+        
+    Default:
+        β1, β2 = 0.6, 0.4
+        method1, method2 = linear, spline
+    
+    Weights are meant to be numbers from the interval (0, 1)
+    which add up to one, to keep the weighted sum consistent.
+    
+    limit_direction : {‘forward’, ‘backward’, ‘both’}, default ‘forward’
+    If limit is specified, consecutive NaNs will be filled in this direction.
+    
+    If the predicted φ_i value is outside of the the interval
+    ( (mean - limit), (mean + limit) )
+    it will be replaced by the linear interpolation approximation.
+    
+    If not set, mean and limit will default to:
+        mean = data.mean()
+        limit = 2 * data.std()
+    
+    This function should have support for keyword arguments, but is yet to be implemented.
+    """
+    predictions: List[float] = [] 
+    
+    if not np.isclose(sum(weight for weight in weights), 1):
+        raise Exception('Sum of weights must be equal to one!')
+    
+    for met in methods:
+        if (met == 'spline') or (met == 'polynomial'):
+            predictions.append(data.interpolate(method=met, order=order, limit_direction=direction))
+        else:
+            predictions.append(data.interpolate(method=met, limit_direction=direction))
+
+    linear: pd.core.series.Series = predictions[0]
+    spline: pd.core.series.Series = predictions[1]
+    hybrid: pd.core.series.Series = weights[0]*predictions[0] + weights[1]*predictions[1]
+    
+    corrected: pd.core.series.Series = copy.deepcopy(hybrid) 
+    
+    if not mean:
+        mean = data.mean()
+    if not limit:
+        limit = 2 * data.std()
+    
+    for idx, val in zip(hybrid[ np.isnan(data) ].index, hybrid[ np.isnan(data) ]):
+        if (val > mean + limit) or (val < mean - limit):
+            corrected[idx] = linear[idx]
+    
+    #df = copy.deepcopy(interpolated)
+    #print(df.isnull().astype(int).groupby(df.notnull().astype(int).cumsum()).sum())
+    
+    return corrected
+##
+
 
 # ### HBA1C%
 # The gold standard for diabetes diagnosis and evaluation of its therapy. See the [Mayo clinic's page on HBA1C](https://www.mayocliniclabs.com/test-catalog/Clinical+and+Interpretive/82080)
 
-# In[9]:
+# In[7]:
 
 
 hba1c = lambda x: (x + 105) / 36.5
 
 
-# In[10]:
+# In[8]:
 
 
 #get_duplicate_idx = lambda w: w[w.index.duplicated(keep=False)].index
 
 
-# In[11]:
+# In[338]:
 
 
 get_csv_files = lambda loc: [os.path.join(loc, x) for x in os.listdir(loc) if x[-4:] == ".csv"] 
 
 
-# In[12]:
+# In[339]:
 
 
 files = get_csv_files("data/newest/")
 files
 
 
-# In[38]:
+# In[340]:
 
 
 the_file = files[0]
@@ -234,14 +302,14 @@ x = pd.read_csv(the_file)
 
 # Read the csv file, and inspect the columns. Our ```time_indexed_df``` function requires a single column containing "Datetime". For this purpose we calculate it by concatenating the **Date** and **Time** columns from the csv.
 
-# In[40]:
+# In[341]:
 
 
 x["DateTime"] =  x["Date"] + " " + x["Time"]
 x.drop(["Date", "Time"], axis=1, inplace=True)
 
 
-# In[43]:
+# In[342]:
 
 
 x.head(3)
@@ -249,18 +317,28 @@ x.head(3)
 
 # Here we create a *date_time-indexed dataframe*. Afterwards we drop the original, useless, "Index" column. We then merge on duplicate indices as the Pump system logs a separate entry for each event, even when they occur simultaneously.
 
-# In[44]:
+# In[343]:
 
 
 y = time_indexed_df(x, 'DateTime')
 y.drop("Index", axis=1, inplace=True)
+# experimental  
+y.index = y.index.map(lambda t: t.replace(second=0))
+# end experimental
 y = merge_on_duplicate_idx(y, verbose=True)
 z = y.copy()
 
 
+# In[344]:
+
+
+# TMP !
+z = y.loc["2020-03-12":"2020-03-27", :]
+
+
 # If you would like to better understand the *merge* mechanism, uncomment the following code snippet, index the dataframe on the pertinent indices (```duplicate_idx``` variable).
 
-# In[16]:
+# In[34]:
 
 
 # Removing duplicates : 
@@ -271,27 +349,251 @@ y = y.mask( y == np.nan ).groupby(level=0).first()
 """
 
 
-# In[50]:
+# In[38]:
 
 
 # Remove unnecessary seconds resolution from datetime-index : 
-y.index = y.index.map(lambda t: t.replace(second=0))
+#y.index = y.index.map(lambda t: t.replace(second=0))
 
 
-# In[63]:
+# In[120]:
+
+
+pd.infer_freq(y.index)
+adv_methods = ['krogh', 'piecewise_polynomial', 'spline', 'pchip', 'akima']
+
+
+# In[345]:
+
+
+#help(hybrid_interpolator)
+
+
+# In[418]:
+
+
+clip = pd.read_clipboard(sep='\s\s+')
+clip.index = clip.index.map(pd.to_datetime)
+
+
+# In[426]:
+
+
+clip.index.to_series().diff(1) > dt.timedelta(minutes=45)
+
+
+# In[423]:
+
+
+clip.index
+
+
+# In[ ]:
+
+
+
+
+
+# In[346]:
+
+
+w = z.loc[:, ["Sensor Glucose (mg/dL)", "ISIG Value"]]#.resample("1T").asfreq()
+#v = w.interpolate(method=adv_methods[-4], order=4)
+v = hybrid_interpolator(
+    w["Sensor Glucose (mg/dL)"],
+    weights=[0.5, 0.5]
+)
+
+
+# In[415]:
+
+
+w.loc['2020-03-16 16:31:00':'2020-03-16 19:30:00', ["Sensor Glucose (mg/dL)", "ISIG Value"]]
+
+
+# In[347]:
+
+
+start = "2020-03-16 9:35"
+stop  = "2020-03-17 19:45"
+
+
+# In[391]:
+
+
+#help(pd.core.frame.DatetimeIndex.to_series)
+
+
+# In[404]:
+
+
+#dir(w.index)
+indices_df = pd.DataFrame(w.index.to_series(name="Index"))
+indices_df["Deltas"] = indices_df.Index.diff(1)
+indices_df["Cutoff"] = indices_df.Deltas > dt.timedelta(minutes=45)
+indices_df.Cutoff[indices_df.Cutoff == True].index.to_list()
+
+
+# In[397]:
+
+
+indices_df["Deltas"] = indices_df.Index.diff(1)
+
+
+# In[349]:
+
+
+greater_than_half = indices.diff(1) > dt.timedelta(minutes=45)
+
+
+# In[ ]:
+
+
+
+
+
+# In[350]:
+
+
+jumps = greater_than_half[greater_than_half == True].index.to_list()
+jumps
+
+
+# In[351]:
+
+
+#w.index
+g = w.applymap(lambda x: int(x) if not np.isnan(x) else x).groupby("ISIG Value")
+g
+
+
+# In[379]:
+
+
+g = w.groupby(level=0, by=jumps)
+
+
+# In[380]:
+
+
+for i, j in g:
+    print(i)
+    print(j.shape)
+
+
+# In[365]:
+
+
+g = w.index.groupby(jumps)
+
+
+# In[370]:
+
+
+keys = list(g.keys())
+
+
+# In[375]:
+
+
+g[keys[0]]
+
+
+# In[376]:
+
+
+#w.loc[g[], :]
+
+
+# In[336]:
+
+
+for i, j in g:
+    print(i)
+
+
+# In[298]:
+
+
+for cut_date, split_df in w.groupby(jumps, axis=0):
+    print(cut_date)
+
+
+# In[257]:
+
+
+#help(pd.DataFrame.groupby)
+
+
+# In[246]:
+
+
+help(pd.DataFrame.between_time)
+
+
+# In[234]:
+
+
+cutter
+
+
+# In[430]:
+
+
+#v.loc[start:stop].plot()
+z.loc[start:stop, "Sensor Glucose (mg/dL)"].interpolate().plot(label='Linear iinterpolation')
+z.loc[start:stop, "Sensor Glucose (mg/dL)"].plot(label='Original')
+z.loc[star
+plt.legend()
+
+
+# In[115]:
+
+
+z["Sensor Glucose (mg/dL)"].dropna().index == w["Sensor Glucose (mg/dL)"].dropna().index
+
+
+# In[435]:
+
+
+start2 = "2020-03-13"
+stop2  = "2020-03-16"
+
+
+# In[437]:
+
+
+z.loc["2020-03-14":"2020-03-14", "Sensor Glucose (mg/dL)"].interpolate("linear").plot()
+z.loc[start2:stop2, "Sensor Glucose (mg/dL)"].interpolate("cubic").plot()
+z.loc[start2:stop2, "Sensor Glucose (mg/dL)"].plot()
+
+
+# In[117]:
 
 
 #help(y.resample)
-w = y.resample("1T").apply(lambda x: x)
+#w = y.resample("1T").apply(lambda x: x)
 
 
-# In[64]:
+# In[45]:
+
+
+#dir(y.index)
+
+
+# In[48]:
 
 
 y.index[:10], w.index[:10]
 
 
-# In[17]:
+# In[88]:
+
+
+y.loc[meal_id, :].shape, w.loc[meal_id, :].shape
+
+
+# In[65]:
 
 
 # Useful having an hour column, for groupby opperations :
@@ -311,7 +613,7 @@ for i in [10, 20, 30]:
 # 
 # To better represent this periodicity, I've decided to create this two new periodic variables as the sine and cosine of the hour and minute of the day. This enables the expression of the periodicity of physiological phenomena, i.e. today's midnight is closer to tomorrow's morning than it is to the same day's morning.
 
-# In[18]:
+# In[66]:
 
 
 T = 1439
@@ -321,26 +623,26 @@ y['y(t)'] = min_res_t_series.apply(lambda x: np.sin(2*np.pi*(x) / T))
 # sns.scatterplot(x="x(t)", y="y(t)", data=y)
 
 
-# In[19]:
+# In[67]:
 
 
 #y.columns
 
 
-# In[20]:
+# In[68]:
 
 
 idx = y['Sensor Glucose (mg/dL)'].dropna().index
 #y.loc[idx, ['Sensor Glucose (mg/dL)', 'd10', 'd20'] ].head(25)
 
 
-# In[21]:
+# In[69]:
 
 
 whole = y.copy()
 
 
-# In[22]:
+# In[70]:
 
 
 whole['ISIG Value'].dropna().count(), whole['Sensor Glucose (mg/dL)'].dropna().count()
@@ -348,7 +650,7 @@ whole['ISIG Value'].dropna().count(), whole['Sensor Glucose (mg/dL)'].dropna().c
 
 # We can perform regression as we have as many ISIG values as Glucose sensor readings. This is however a bit discouraging as it implies that the pump stops logging ISIG values when a calibration deadline is missed, I'm talking from experience.
 
-# In[23]:
+# In[71]:
 
 
 """
@@ -360,13 +662,13 @@ whole.loc[
 """
 
 
-# In[24]:
+# In[72]:
 
 
 hba1c(whole['Sensor Glucose (mg/dL)'].dropna().mean())
 
 
-# In[26]:
+# In[73]:
 
 
 comparative_hba1c_plot(whole)
@@ -375,33 +677,33 @@ dist_plot(whole['Sensor Glucose (mg/dL)'])
 
 # # Last 15 days
 
-# In[27]:
+# In[74]:
 
 
 y = whole.loc["2020-03-12":"2020-03-27", :]
 
 
-# In[28]:
+# In[75]:
 
 
 comparative_hba1c_plot(y)
 dist_plot(y['Sensor Glucose (mg/dL)'])
 
 
-# In[29]:
+# In[76]:
 
 
 # This is commented out as this function has a bug.
 #probability_estimate(y["Sensor Glucose (mg/dL)"], 150, 300, percentage=True)
 
 
-# In[36]:
+# In[77]:
 
 
 #y["Sensor Glucose (mg/dL)"].dropna().apply(int)
 
 
-# In[37]:
+# In[78]:
 
 
 #"dropna" in dir(pd.Series)
@@ -409,7 +711,7 @@ dist_plot(y['Sensor Glucose (mg/dL)'])
 
 # ## Hypoglycaemia pattern detection
 
-# In[30]:
+# In[79]:
 
 
 keyword = 'SUSPEND BEFORE LOW'
@@ -420,13 +722,13 @@ for i in y.Alarm.dropna().unique().tolist():
 alarms
 
 
-# In[32]:
+# In[80]:
 
 
 y[ y.Alarm == 'SUSPEND BEFORE LOW ALARM, QUIET' ].hour.hist()
 
 
-# In[35]:
+# In[81]:
 
 
 #meal_id = y['BWZ Carb Input (grams)'].dropna().index

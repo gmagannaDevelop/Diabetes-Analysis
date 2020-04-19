@@ -5,3 +5,6 @@ token.pickle
 Errors.log
 __pycache__/*
 logs/
+preprocessed/*
+tmp_data/*
+data_sync_log.jsonl

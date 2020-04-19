@@ -176,8 +176,6 @@ def grep_idx(file_lines: List[str], the_string: str) -> List[int]:
 @time_log("logs/preprocessing.jsonl")
 def main(in_file: str, out_file: str) -> NoReturn:
     """
-
-    "-------," 
     
     """
     #get_csv_files = lambda loc: [os.path.join(loc, x) for x in os.listdir(loc) if x[-4:] == ".csv"] 

@@ -1,0 +1,6 @@
+{
+    "read": "/Users/gml/Google Drive/Personal/Diabetes/",
+    "tmp": "/Users/gml/Documents/Personal/NewDiabetes/tmp_data",
+    "write": "/Users/gml/Documents/Personal/NewDiabetes/preprocessed",
+    "preprocess": true
+}

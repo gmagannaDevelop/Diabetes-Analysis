@@ -75,6 +75,7 @@ def get_directories(path: str) -> List[str]:
     return [name for name in os.listdir(path) if os.path.isdir(name)]
 ##
 
+@decorators.time_log("logs/sync.jsonl")
 @decorators.log_exception_to_mail(subject="Data sync error")
 def main(logfile: Optional[str] = None):
     

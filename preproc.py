@@ -3,6 +3,7 @@
 """
 
 import os
+import io
 import sys
 import multiprocessing as mp
 from functools import reduce, partial
@@ -136,13 +137,65 @@ def hybrid_interpolator(
     return corrected
 ##
 
+def import_csv(
+    filename: str,
+    column: Optional[str] = None
+) -> pd.DataFrame:
+    """
+        Import a csv file previously generated with this same script.
+        
+        `column` optional parameter specifies the 
+                 name of the column containing 
+                 the datetime index.
+                 Defaults to 'DateTime'
+    """
+
+    column = column or "DateTime"
+    _x = pd.read_csv(filename)
+    _y = time_indexed_df(_x, column)
+
+    return _y
+##
+
+def grep_idx(file_lines: List[str], the_string: str) -> List[int]: 
+    """
+        Function definition inpired by Dorian Grv :
+        https://stackoverflow.com/users/2444948/dorian-grv, 
+        
+        Originally used re.search in the context of this question:
+        https://stackoverflow.com/questions/4146009/python-get-list-indexes-using-regular-expression
+    """
+
+    ide = [i for i, item in enumerate(file_lines) if item.startswith(the_string)] 
+    return ide 
+
 
 @time_log("logs/preprocessing.jsonl")
 def main(in_file: str) -> NoReturn:
     """
+
+    "-------," 
+    
     """
     #get_csv_files = lambda loc: [os.path.join(loc, x) for x in os.listdir(loc) if x[-4:] == ".csv"] 
-    x = pd.read_csv(in_file)
+    with open(in_file, "r") as f:
+        f_list = f.readlines()[6:]
+        idx_to_remove = grep_idx(f_list, "-------,")
+        _tmp_ixs = []
+        # Quadratic complexity :(
+        for ix in idx_to_remove:
+            _tmp_ixs.extend([ix-1, ix+1])
+        idx_to_remove.extend(
+            [i for i in _tmp_ixs if i in range(len(f_list))]
+        )
+
+        for i in reversed(sorted(idx_to_remove)):
+            _ = f_list.pop(i)
+    
+    f_str = "".join(f_list)
+    
+    with io.StringIO(f_str) as g:
+        x = pd.read_csv(g)
     
     # Date-time indexing :
     x["DateTime"] =  x["Date"] + " " + x["Time"]

@@ -174,7 +174,7 @@ def grep_idx(file_lines: List[str], the_string: str) -> List[int]:
 
 @time_this
 @time_log("logs/preprocessing.jsonl")
-def main(in_file: str) -> NoReturn:
+def main(in_file: str, out_file: str) -> NoReturn:
     """
 
     "-------," 
@@ -210,22 +210,19 @@ def main(in_file: str) -> NoReturn:
     # Merge duplicates :
     y = merge_on_duplicate_idx(y, verbose=True)
     
-    
     # Useful having an hour column, for groupby opperations :
     y['hour'] = y.index.hour
     # Deltas within valuable intervals : 
     for i in [10, 20, 30]: 
         y[f'd{i}'] = y['Sensor Glucose (mg/dL)'].diff(i)
     
-   
     # Coulmns to capture daily periodicity :
     T = 1439
     min_res_t_series = pd.Series(y.hour*60 + y.index.minute)
     y['x(t)'] = min_res_t_series.apply(lambda x: np.cos(2*np.pi*(x) / T))
     y['y(t)'] = min_res_t_series.apply(lambda x: np.sin(2*np.pi*(x) / T))
     
-    
-    y.to_csv(sys.argv[2])
+    y.to_csv(out_file)
 ##
 
 if __name__ == "__main__":
@@ -246,6 +243,8 @@ if __name__ == "__main__":
         else:
             print(f"Error: `{sys.argv[1]}` no such file or directory")
             exit()
-
-    main(in_file)
+    
+    out_file = sys.argv[2]
+    
+    main(in_file, out_file)
 ##

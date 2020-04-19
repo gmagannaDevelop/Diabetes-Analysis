@@ -18,7 +18,7 @@ import gc
 from typing import List, Dict, NoReturn, Any, Callable, Union, Optional
 ##
 
-from decorators import time_log
+from decorators import time_log, time_this
 
 @time_log("logs/preprocessing.jsonl")
 def time_indexed_df(df1: pd.core.frame.DataFrame, columname: str) -> pd.core.frame.DataFrame:
@@ -157,6 +157,7 @@ def import_csv(
     return _y
 ##
 
+@time_this
 def grep_idx(file_lines: List[str], the_string: str) -> List[int]: 
     """
         Function definition inpired by Dorian Grv :
@@ -170,6 +171,8 @@ def grep_idx(file_lines: List[str], the_string: str) -> List[int]:
     return ide 
 
 
+
+@time_this
 @time_log("logs/preprocessing.jsonl")
 def main(in_file: str) -> NoReturn:
     """

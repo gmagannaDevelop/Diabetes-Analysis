@@ -27,7 +27,7 @@ def time_this(f: Callable) -> Callable:
         result = f(*args, **kw)
         te = time()
         exec_time = te - ts
-        print(f'func:{f.__name__} args:[{args}, {kw}] took: {exec_time:.4f} s')
+        print(f'func:{f.__name__} args:[{len(args)}, {len(kw.keys())}] took: {exec_time:.4f} s')
         return result
     return wrap
 ##

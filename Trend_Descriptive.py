@@ -30,7 +30,7 @@ from typing import List, Dict, NoReturn, Any, Callable, Union, Optional
 from preproc import import_csv
 
 
-# In[61]:
+# In[86]:
 
 
 def dist_plot(series: pd.core.series.Series, dropna: bool = True) -> NoReturn:
@@ -67,37 +67,26 @@ def comparative_hba1c_plot(
     },
     kind: str = "mean"
 ) -> NoReturn:
-    """
-        
+    """ 
     """
     
     glc_to_hba1c = lambda x: (x + 105) / 36.5
     hba1c_to_glc = lambda x: x*36.5 - 105 
+    valid_kinds = ["mean", "std", "var"]
     
-    if kind == "mean":
-        df.groupby(df.index.dayofyear)[colum_name].mean().apply(hba1c).plot(**{"label":"daily"})
+    if kind in valid_kinds:
+        df.groupby(df.index.dayofyear)[colum_name].            apply(eval(f"np.{kind}")).apply(hba1c).                plot(**{"label":"daily"})
+                
         for key, value in windows.items():
-            ax = df.groupby(df.index.dayofyear)[colum_name].mean().                    rolling(value).mean().                        apply(hba1c).plot(**{"label":key})
+            ax = df.groupby(df.index.dayofyear)[colum_name].                    apply(eval(f"np.{kind}")).rolling(value).mean().                            apply(hba1c).plot(**{"label":key})
     
         ax.set_ylabel("HbA1c %")
-        mean_hba1c = glc_to_hba1c(df[colum_name].mean())
+        mean_hba1c = glc_to_hba1c(eval(f"df[colum_name].{kind}()"))
         secax = ax.secondary_yaxis('right', functions=(hba1c_to_glc, glc_to_hba1c))
         secax.set_ylabel('mg/dL')
         plt.axhline(mean_hba1c, **{"label": f"mean = {round(mean_hba1c,1)}", "c": "blue"})
         plt.legend()
-        plt.title(f"Mean behaviour {colum_name}")
-    elif kind == "std" or kind == "var":
-        df.groupby(df.index.dayofyear)[colum_name].std().apply(hba1c).plot(**{"label":"daily"})
-        for key, value in windows.items():
-            ax = df.groupby(df.index.dayofyear)[colum_name].std().                    rolling(value).mean().                        apply(hba1c).plot(**{"label":key})
-    
-        ax.set_ylabel("HbA1c %")
-        mean_hba1c = glc_to_hba1c(df[colum_name].std())
-        secax = ax.secondary_yaxis('right', functions=(hba1c_to_glc, glc_to_hba1c))
-        secax.set_ylabel('mg/dL')
-        plt.axhline(mean_hba1c, **{"label": f"mean = {round(mean_hba1c,1)}", "c": "blue"})
-        plt.legend()
-        plt.title(f"Deviations {colum_name}")
+        plt.title(f"Average {kind} of {colum_name}")
     else:
         raise Exception("kind should be `mean` (`std` or `var`)")
 ##
@@ -114,8 +103,8 @@ def nonull_indices(
 ##
 
 def bolus_indices(
-    df: pd.DataFrame,
-    columns: Optional[List[str]] = None 
+    df: pd.DataFrame, 
+    columns: Optional[List[str]] = None
 ) -> pd.core.indexes.datetimes.DatetimeIndex:
     """
     """
@@ -127,14 +116,14 @@ def bolus_indices(
 ##
 
 
-def basal_only(df: pd.DataFrame) -> pd.DataFrame:
+def basal_only(df: pd.DataFrame, column: str = "Sensor Glucose (mg/dL)") -> pd.DataFrame:
     """
     """
     basal = df.copy()
     for uid in bolus_indices(basal):
         real = uid+dt.timedelta(hours=2, minutes=30)
         closest = df.index[df.index.searchsorted(real) - 1]  # Otherwise it goes out of bounds !
-        basal.loc[uid:closest, 'Sensor Glucose (mg/dL)'] = np.nan
+        basal.loc[uid:closest, column] = np.nan
     return basal
 ##
 
@@ -153,23 +142,10 @@ def hourly_trends(df: pd.DataFrame, kind: str = "mean") -> NoReturn:
         figs[-1].legend()
         plt.title(f"Hourly trends : {kind}")
         plt.xticks([i for i in range(24)])
+        plt.ylabel("mg/dl")
     else:
         raise Exception(f"Invalid kind, select one from {valid_kinds}")
-##
-
-def hourly_var_trends(df: pd.DataFrame) -> NoReturn:
-    """
-    """
-    figs = [
-        df.groupby(df.index.hour)[f'd{i}'].std().plot(label=f"{i} ") for i in [10, 20, 30]
-    ]
-    plt.xticks(
-        [i for i in range(24)]
-    )
-    figs[-1].legend()
-    plt.title("Standard deviation on diffs")
-##
-        
+##        
 
 
 # In[3]:
@@ -199,25 +175,31 @@ print("end \t:", data.index[-1])
 dist_plot(data["Sensor Glucose (mg/dL)"])
 
 
-# In[7]:
+# In[83]:
 
 
-comparative_hba1c_plot(data)
+comparative_hba1c_plot(data, kind="mean")
 
 
-# In[8]:
+# In[85]:
 
 
-comparative_hba1c_plot(data, kind='var')
+comparative_hba1c_plot(data, kind='std')
 
 
-# In[32]:
+# In[91]:
 
 
 latest = data.loc["2020-04-15":"2020-04-19", :]
 
 
-# In[33]:
+# In[100]:
+
+
+#latest.loc["2020-04-18", "Sensor Glucose (mg/dL)"].plot()
+
+
+# In[93]:
 
 
 sns.scatterplot(
@@ -229,40 +211,40 @@ sns.scatterplot(
 )
 
 
-# In[65]:
+# In[94]:
 
 
 hourly_trends(data)
 
 
-# In[66]:
+# In[96]:
 
 
-hourly_trends(basal, kind="std")
+#hourly_trends(basal, kind="std")
 
 
-# In[67]:
+# In[97]:
 
 
 basal = basal_only(latest)
 
 
-# In[69]:
+# In[98]:
 
 
 hourly_trends(basal)
 
 
-# In[70]:
+# In[99]:
 
 
-hourly_trends(basal, kind="std")
+#hourly_trends(basal, kind="std")
 
 
-# In[71]:
+# In[ ]:
 
 
-hourly_var_trends(basal)
+
 
 
 # In[ ]:

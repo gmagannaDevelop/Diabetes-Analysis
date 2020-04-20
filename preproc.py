@@ -217,6 +217,7 @@ def main(in_file: str, out_file: str) -> NoReturn:
     # Coulmns to capture daily periodicity :
     T = 1439
     min_res_t_series = pd.Series(y.hour*60 + y.index.minute)
+    y['minutes'] = min_res_t_series
     y['x(t)'] = min_res_t_series.apply(lambda x: np.cos(2*np.pi*(x) / T))
     y['y(t)'] = min_res_t_series.apply(lambda x: np.sin(2*np.pi*(x) / T))
     

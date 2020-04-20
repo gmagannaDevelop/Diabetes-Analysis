@@ -140,6 +140,10 @@ def comparative_hba1c_plot(
     """
         
     """
+    
+    glc_to_hba1c = lambda x: (x + 105) / 36.5
+    hba1c_to_glc = lambda x: x*36.5 - 105 
+    
     df.groupby(df.index.dayofyear)[colum_name].mean().apply(hba1c).plot(**{"label":"daily"})
     for key, value in windows.items():
         df.groupby(df.index.dayofyear)[colum_name].mean().rolling(value).mean().apply(hba1c).plot(**{"label":key})
@@ -285,31 +289,31 @@ hba1c = lambda x: (x + 105) / 36.5
 get_csv_files = lambda loc: [os.path.join(loc, x) for x in os.listdir(loc) if x[-4:] == ".csv"] 
 
 
-# In[15]:
+# In[113]:
 
 
 files = get_csv_files("data/apr/")
 files
 
 
-# In[16]:
+# In[114]:
 
 
-the_file = files[-1]
+the_file = files[0]
 x = pd.read_csv(the_file)
 # x.columns
 
 
 # Read the csv file, and inspect the columns. Our ```time_indexed_df``` function requires a single column containing "Datetime". For this purpose we calculate it by concatenating the **Date** and **Time** columns from the csv.
 
-# In[17]:
+# In[115]:
 
 
-x["DateTime"] =  x["Date"] + " " + x["Time"]
+x["DateTime"] = x["Date"] + " " + x["Time"]
 x.drop(["Date", "Time"], axis=1, inplace=True)
 
 
-# In[18]:
+# In[116]:
 
 
 x.head(3)
@@ -317,7 +321,7 @@ x.head(3)
 
 # Here we create a *date_time-indexed dataframe*. Afterwards we drop the original, useless, "Index" column. We then merge on duplicate indices as the Pump system logs a separate entry for each event, even when they occur simultaneously.
 
-# In[19]:
+# In[117]:
 
 
 y = time_indexed_df(x, 'DateTime')
@@ -329,7 +333,7 @@ y = merge_on_duplicate_idx(y, verbose=True)
 z = y.copy()
 
 
-# In[20]:
+# In[118]:
 
 
 # TMP !
@@ -338,7 +342,7 @@ z = y.loc["2020-03-12":"2020-03-27", :]
 
 # If you would like to better understand the *merge* mechanism, uncomment the following code snippet, index the dataframe on the pertinent indices (```duplicate_idx``` variable).
 
-# In[21]:
+# In[119]:
 
 
 # Removing duplicates : 
@@ -349,40 +353,40 @@ y = y.mask( y == np.nan ).groupby(level=0).first()
 """
 
 
-# In[22]:
+# In[120]:
 
 
 # Remove unnecessary seconds resolution from datetime-index : 
 #y.index = y.index.map(lambda t: t.replace(second=0))
 
 
-# In[23]:
+# In[121]:
 
 
 pd.infer_freq(y.index)
 adv_methods = ['krogh', 'piecewise_polynomial', 'spline', 'pchip', 'akima']
 
 
-# In[24]:
+# In[122]:
 
 
 #help(hybrid_interpolator)
 
 
-# In[26]:
+# In[123]:
 
 
 #clip = pd.read_clipboard(sep='\s\s+')
 #clip.index = clip.index.map(pd.to_datetime)
 
 
-# In[27]:
+# In[124]:
 
 
 #clip.index.to_series().diff(1) > dt.timedelta(minutes=45)
 
 
-# In[28]:
+# In[125]:
 
 
 #clip.index
@@ -394,7 +398,7 @@ adv_methods = ['krogh', 'piecewise_polynomial', 'spline', 'pchip', 'akima']
 
 
 
-# In[29]:
+# In[126]:
 
 
 w = z.loc[:, ["Sensor Glucose (mg/dL)", "ISIG Value"]]#.resample("1T").asfreq()
@@ -405,26 +409,26 @@ v = hybrid_interpolator(
 )
 
 
-# In[30]:
+# In[127]:
 
 
 w.loc['2020-03-16 16:31:00':'2020-03-16 19:30:00', ["Sensor Glucose (mg/dL)", "ISIG Value"]]
 
 
-# In[31]:
+# In[128]:
 
 
 start = "2020-03-16 9:35"
 stop  = "2020-03-17 19:45"
 
 
-# In[32]:
+# In[129]:
 
 
 #help(pd.core.frame.DatetimeIndex.to_series)
 
 
-# In[33]:
+# In[130]:
 
 
 #dir(w.index)
@@ -434,13 +438,13 @@ indices_df["Cutoff"] = indices_df.Deltas > dt.timedelta(minutes=45)
 indices_df.Cutoff[indices_df.Cutoff == True].index.to_list()
 
 
-# In[34]:
+# In[131]:
 
 
 indices_df["Deltas"] = indices_df.Index.diff(1)
 
 
-# In[39]:
+# In[132]:
 
 
 greater_than_half = indices_df["Deltas"] > dt.timedelta(minutes=45)
@@ -452,14 +456,14 @@ greater_than_half = indices_df["Deltas"] > dt.timedelta(minutes=45)
 
 
 
-# In[40]:
+# In[133]:
 
 
 jumps = greater_than_half[greater_than_half == True].index.to_list()
 jumps
 
 
-# In[41]:
+# In[134]:
 
 
 #w.index
@@ -467,13 +471,13 @@ g = w.applymap(lambda x: int(x) if not np.isnan(x) else x).groupby("ISIG Value")
 g
 
 
-# In[42]:
+# In[135]:
 
 
 g = w.groupby(level=0, by=jumps)
 
 
-# In[43]:
+# In[136]:
 
 
 for i, j in g:
@@ -482,25 +486,25 @@ for i, j in g:
     #print(j.shape)
 
 
-# In[44]:
+# In[137]:
 
 
 g = w.index.groupby(jumps)
 
 
-# In[45]:
+# In[138]:
 
 
 keys = list(g.keys())
 
 
-# In[46]:
+# In[139]:
 
 
 g[keys[0]]
 
 
-# In[47]:
+# In[140]:
 
 
 #w.loc[g[], :]
@@ -512,32 +516,32 @@ g[keys[0]]
 
 
 
-# In[48]:
+# In[141]:
 
 
 #for cut_date, split_df in w.groupby(jumps, axis=0):
     #print(cut_date)
 
 
-# In[49]:
+# In[142]:
 
 
 #help(pd.DataFrame.groupby)
 
 
-# In[50]:
+# In[143]:
 
 
 #help(pd.DataFrame.between_time)
 
 
-# In[51]:
+# In[144]:
 
 
 cutter
 
 
-# In[53]:
+# In[145]:
 
 
 #v.loc[start:stop].plot()
@@ -547,20 +551,20 @@ z.loc[start:stop, "Sensor Glucose (mg/dL)"].plot(label='Original')
 plt.legend()
 
 
-# In[54]:
+# In[146]:
 
 
 z["Sensor Glucose (mg/dL)"].dropna().index == w["Sensor Glucose (mg/dL)"].dropna().index
 
 
-# In[55]:
+# In[147]:
 
 
 start2 = "2020-03-13"
 stop2  = "2020-03-16"
 
 
-# In[56]:
+# In[148]:
 
 
 z.loc["2020-03-14":"2020-03-14", "Sensor Glucose (mg/dL)"].interpolate("linear").plot()
@@ -568,32 +572,32 @@ z.loc[start2:stop2, "Sensor Glucose (mg/dL)"].interpolate("cubic").plot()
 z.loc[start2:stop2, "Sensor Glucose (mg/dL)"].plot()
 
 
-# In[57]:
+# In[149]:
 
 
 #help(y.resample)
 #w = y.resample("1T").apply(lambda x: x)
 
 
-# In[58]:
+# In[150]:
 
 
 #dir(y.index)
 
 
-# In[59]:
+# In[151]:
 
 
 y.index[:10], w.index[:10]
 
 
-# In[60]:
+# In[152]:
 
 
 y.loc[meal_id, :].shape, w.loc[meal_id, :].shape
 
 
-# In[61]:
+# In[153]:
 
 
 # Useful having an hour column, for groupby opperations :
@@ -613,7 +617,7 @@ for i in [10, 20, 30]:
 # 
 # To better represent this periodicity, I've decided to create this two new periodic variables as the sine and cosine of the hour and minute of the day. This enables the expression of the periodicity of physiological phenomena, i.e. today's midnight is closer to tomorrow's morning than it is to the same day's morning.
 
-# In[62]:
+# In[154]:
 
 
 T = 1439
@@ -623,26 +627,26 @@ y['y(t)'] = min_res_t_series.apply(lambda x: np.sin(2*np.pi*(x) / T))
 # sns.scatterplot(x="x(t)", y="y(t)", data=y)
 
 
-# In[63]:
+# In[155]:
 
 
 #y.columns
 
 
-# In[64]:
+# In[156]:
 
 
 idx = y['Sensor Glucose (mg/dL)'].dropna().index
 #y.loc[idx, ['Sensor Glucose (mg/dL)', 'd10', 'd20'] ].head(25)
 
 
-# In[65]:
+# In[157]:
 
 
 whole = y.copy()
 
 
-# In[66]:
+# In[158]:
 
 
 whole['ISIG Value'].dropna().count(), whole['Sensor Glucose (mg/dL)'].dropna().count()
@@ -650,7 +654,7 @@ whole['ISIG Value'].dropna().count(), whole['Sensor Glucose (mg/dL)'].dropna().c
 
 # We can perform regression as we have as many ISIG values as Glucose sensor readings. This is however a bit discouraging as it implies that the pump stops logging ISIG values when a calibration deadline is missed, I'm talking from experience.
 
-# In[67]:
+# In[159]:
 
 
 """
@@ -662,13 +666,13 @@ whole.loc[
 """
 
 
-# In[68]:
+# In[160]:
 
 
 hba1c(whole['Sensor Glucose (mg/dL)'].dropna().mean())
 
 
-# In[69]:
+# In[161]:
 
 
 comparative_hba1c_plot(whole)
@@ -677,33 +681,33 @@ dist_plot(whole['Sensor Glucose (mg/dL)'])
 
 # # Last 15 days
 
-# In[94]:
+# In[162]:
 
 
-y = whole.loc["2020-03-01":"2020-04-15", :]
+y = whole.loc["2020-04-01":"2020-04-15", :]
 
 
-# In[95]:
+# In[163]:
 
 
 comparative_hba1c_plot(y)
 dist_plot(y['Sensor Glucose (mg/dL)'])
 
 
-# In[74]:
+# In[164]:
 
 
 # This is commented out as this function has a bug.
 #probability_estimate(y["Sensor Glucose (mg/dL)"], 150, 300, percentage=True)
 
 
-# In[75]:
+# In[165]:
 
 
 #y["Sensor Glucose (mg/dL)"].dropna().apply(int)
 
 
-# In[76]:
+# In[166]:
 
 
 #"dropna" in dir(pd.Series)
@@ -711,7 +715,7 @@ dist_plot(y['Sensor Glucose (mg/dL)'])
 
 # ## Hypoglycaemia pattern detection
 
-# In[77]:
+# In[167]:
 
 
 keyword = 'SUSPEND BEFORE LOW'
@@ -722,7 +726,7 @@ for i in y.Alarm.dropna().unique().tolist():
 alarms
 
 
-# In[78]:
+# In[168]:
 
 
 y[ y.Alarm == 'SUSPEND BEFORE LOW ALARM, QUIET' ].hour.hist()
@@ -756,7 +760,7 @@ bolus_id = corrections_id.union(meal_id)
 print(len(bolus_id))
 
 
-# In[82]:
+# In[104]:
 
 
 basal = y.copy()
@@ -800,7 +804,7 @@ for uid in bolus_id:
 y.loc[bolus_id[5], bolus.columns]
 
 
-# In[88]:
+# In[106]:
 
 
 show = False
@@ -816,11 +820,26 @@ if show:
 #basal.groupby(basal.index.hour)['Sensor Glucose (mg/dL)'].mean().plot()
 
 
-# In[90]:
+# In[108]:
+
+
+(lambda i: basal.groupby(basal.index.hour)[f'd{i}'].mean().hist(label=f"{i} min"))(10)
+
+
+# In[109]:
 
 
 figs = [basal.groupby(basal.index.hour)[f'd{i}'].mean().plot(label=f"{i} min") for i in [10, 20, 30]]
+plt.xticks(
+    [i for i in range(24)]
+)
 figs[-1].legend()
+
+
+# In[110]:
+
+
+232/3
 
 
 # In[91]:

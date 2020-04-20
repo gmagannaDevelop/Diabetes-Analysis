@@ -116,7 +116,7 @@ def main(logfile: Optional[str] = None):
 
             # print(f"{get_csv_abspaths(data)}")
             print("New logs!")
-        print(f"last log {last_log}")
+        #print(f"last log {last_log}")
     
     #print(data)
 

@@ -30,7 +30,7 @@ from typing import List, Dict, NoReturn, Any, Callable, Union, Optional
 from preproc import import_csv
 
 
-# In[2]:
+# In[61]:
 
 
 def dist_plot(series: pd.core.series.Series, dropna: bool = True) -> NoReturn:
@@ -138,17 +138,23 @@ def basal_only(df: pd.DataFrame) -> pd.DataFrame:
     return basal
 ##
 
-def hourly_mean_trends(df: pd.DataFrame) -> NoReturn:
+def hourly_trends(df: pd.DataFrame, kind: str = "mean") -> NoReturn:
     """
     """
-    figs = [
-        df.groupby(df.index.hour)[f'd{i}'].mean().plot(label=f"{i} ") for i in [10, 20, 30]
-    ]
-    plt.xticks(
-        [i for i in range(24)]
-    )
-    figs[-1].legend()
-    plt.title("Mean diff trends")
+    valid_kinds = ["mean", "std", "var"]
+    
+    if kind in valid_kinds:
+        figs = [
+            df.groupby(df.index.hour)[f'd{i}'].
+                apply(eval(f"np.{kind}")).
+                    plot(label=f"{i} ") 
+            for i in [10, 20, 30]
+        ]
+        figs[-1].legend()
+        plt.title(f"Hourly trends : {kind}")
+        plt.xticks([i for i in range(24)])
+    else:
+        raise Exception(f"Invalid kind, select one from {valid_kinds}")
 ##
 
 def hourly_var_trends(df: pd.DataFrame) -> NoReturn:
@@ -223,31 +229,37 @@ sns.scatterplot(
 )
 
 
-# In[34]:
+# In[65]:
 
 
-hourly_mean_trends(data)
+hourly_trends(data)
 
 
-# In[35]:
+# In[66]:
 
 
-hourly_var_trends(basal)
+hourly_trends(basal, kind="std")
 
 
-# In[36]:
+# In[67]:
 
 
 basal = basal_only(latest)
 
 
-# In[37]:
+# In[69]:
 
 
-hourly_mean_trends(basal)
+hourly_trends(basal)
 
 
-# In[38]:
+# In[70]:
+
+
+hourly_trends(basal, kind="std")
+
+
+# In[71]:
 
 
 hourly_var_trends(basal)

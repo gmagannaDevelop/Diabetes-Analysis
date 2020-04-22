@@ -220,6 +220,9 @@ def main(in_file: str, out_file: str) -> NoReturn:
     y['minutes'] = min_res_t_series
     y['x(t)'] = min_res_t_series.apply(lambda x: np.cos(2*np.pi*(x) / T))
     y['y(t)'] = min_res_t_series.apply(lambda x: np.sin(2*np.pi*(x) / T))
+
+    # Fill missing basal values :
+    y["Basal Rate (U/h)"].fillna(method="ffill", inplace=True)
     
     y.to_csv(out_file)
 ##

@@ -188,12 +188,13 @@ def hourly_trends(df: pd.DataFrame, kind: str = "mean") -> NoReturn:
 random_seed = 123456
 
 
-# In[4]:
+# In[36]:
 
 
 get_ipython().run_line_magic('matplotlib', 'inline')
 plt.style.use('seaborn')
 plt.rcParams['figure.figsize'] = (16, 10)
+plt.rcParams['figure.max_open_warning'] = False
 
 
 # In[5]:
@@ -223,18 +224,12 @@ pd.plotting.autocorrelation_plot(
 )
 
 
-# In[14]:
+# In[9]:
 
 
 for i in range(1, 5):
     plt.figure()
     pd.plotting.lag_plot(latest["Sensor Glucose (mg/dL)"], lag=i)
-
-
-# In[11]:
-
-
-help(pd.plotting.lag_plot)
 
 
 # **Regular**
@@ -245,91 +240,7 @@ help(pd.plotting.lag_plot)
 # 
 # ‘krogh’, ‘piecewise_polynomial’, ‘spline’, ‘pchip’, ‘akima’
 
-# In[10]:
-
-
-plt.close("all")
-
-
-# In[21]:
-
-
-def hybrid_interpolator(
-    data: pd.core.series.Series,
-    mean: float = None,
-    limit: float = None,
-    methods: List[str] = ['linear', 'spline'], 
-    weights: List[float] = [0.65, 0.35],
-    direction: str = 'forward',
-    order: int = 2
-) -> pd.core.series.Series:
-    """
-    Return a pandas.core.series.Series instance resulting of the weighted average
-    of two interpolation methods.
-    
-    Model:
-        φ = β1*method1 + β2*method2
-        
-    Default:
-        β1, β2 = 0.6, 0.4
-        method1, method2 = linear, spline
-    
-    Weights are meant to be numbers from the interval (0, 1)
-    which add up to one, to keep the weighted sum consistent.
-    
-    limit_direction : {‘forward’, ‘backward’, ‘both’}, default ‘forward’
-    If limit is specified, consecutive NaNs will be filled in this direction.
-    
-    If the predicted φ_i value is outside of the the interval
-    ( (mean - limit), (mean + limit) )
-    it will be replaced by the linear interpolation approximation.
-    
-    If not set, mean and limit will default to:
-        mean = data.mean()
-        limit = 2 * data.std()
-    
-    This function should have support for keyword arguments, but is yet to be implemented.
-    """
-    predictions: List[float] = [] 
-    
-    if not np.isclose(sum(weight for weight in weights), 1):
-        raise Exception('Sum of weights must be equal to one!')
-    
-    for met in methods:
-        if (met == 'spline') or (met == 'polynomial'):
-            predictions.append(data.interpolate(method=met, order=order, limit_direction=direction))
-        else:
-            predictions.append(data.interpolate(method=met, limit_direction=direction))
-
-    linear: pd.core.series.Series = predictions[0]
-    spline: pd.core.series.Series = predictions[1]
-    hybrid: pd.core.series.Series = weights[0]*predictions[0] + weights[1]*predictions[1]
-    
-    corrected: pd.core.series.Series = copy.deepcopy(hybrid) 
-    
-    if not mean:
-        mean = data.mean()
-    if not limit:
-        limit = 2 * data.std()
-    
-    for idx, val in zip(hybrid[ np.isnan(data) ].index, hybrid[ np.isnan(data) ]):
-        if (val > mean + limit) or (val < mean - limit):
-            corrected[idx] = linear[idx]
-    
-    #df = copy.deepcopy(interpolated)
-    #print(df.isnull().astype(int).groupby(df.notnull().astype(int).cumsum()).sum())
-    
-    return corrected
-##
-
-
-# In[38]:
-
-
-help(pd.Series.interpolate)
-
-
-# In[44]:
+# In[14]:
 
 
 def new_hybrid_interpolator(
@@ -368,29 +279,50 @@ def new_hybrid_interpolator(
 ##
 
 
-# In[48]:
+# In[15]:
 
 
 plt.close("all")
 
 
-# In[50]:
+# In[55]:
 
 
-for day, frame in data.groupby(data.index.day):
-    plt.figure()
-    new_hybrid_interpolator(
-        frame["Sensor Glucose (mg/dL)"], 
+#data[ data.index.month == 4 ].loc["Sensor Glucose (mg/dL)"].plot()
+
+
+# In[56]:
+
+
+interpolated = new_hybrid_interpolator(
+        data["Sensor Glucose (mg/dL)"], 
         methods={
             'linear': 0.65, 
             'akima': 0.25,
             'polynomial': 0.10
-        }
-    ).plot()
-    frame["Sensor Glucose (mg/dL)"].plot()
+        },
+        direction='both'
+    )
 
 
-# In[20]:
+# In[59]:
+
+
+plt.close("all")
+for date in map(str, sorted(set(data.index.date))):
+    plt.figure()
+    interpolated[date].plot(**{"label": "interpolated"})
+    data.loc[date, "Sensor Glucose (mg/dL)"].plot(**{"label": "original"})
+    plt.legend()
+
+
+# In[ ]:
+
+
+
+
+
+# In[41]:
 
 
 sum(latest["Sensor Glucose (mg/dL)"].dropna()[0:3], latest["Sensor Glucose (mg/dL)"].dropna()[0:3])

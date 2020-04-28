@@ -188,7 +188,7 @@ def hourly_trends(df: pd.DataFrame, kind: str = "mean") -> NoReturn:
 random_seed = 123456
 
 
-# In[36]:
+# In[4]:
 
 
 get_ipython().run_line_magic('matplotlib', 'inline')
@@ -219,15 +219,13 @@ latest = data.loc["2020-04-19":"2020-04-23", :]
 # In[8]:
 
 
-pd.plotting.autocorrelation_plot(
-    latest["Sensor Glucose (mg/dL)"].resample("1Min").interpolate(method="linear")
-)
+#help(pd.plotting.autocorrelation_plot)
 
 
 # In[9]:
 
 
-for i in range(1, 5):
+for i in range(1, 10):
     plt.figure()
     pd.plotting.lag_plot(latest["Sensor Glucose (mg/dL)"], lag=i)
 
@@ -240,7 +238,7 @@ for i in range(1, 5):
 # 
 # ‘krogh’, ‘piecewise_polynomial’, ‘spline’, ‘pchip’, ‘akima’
 
-# In[14]:
+# In[15]:
 
 
 def new_hybrid_interpolator(
@@ -279,22 +277,37 @@ def new_hybrid_interpolator(
 ##
 
 
-# In[15]:
+# In[16]:
 
 
 plt.close("all")
 
 
-# In[55]:
+# In[17]:
 
 
 #data[ data.index.month == 4 ].loc["Sensor Glucose (mg/dL)"].plot()
 
 
-# In[56]:
+# In[18]:
 
 
-interpolated = new_hybrid_interpolator(
+pd.concat([data["2020-04-05"], data["2020-04-06"] ]).index
+
+
+# In[20]:
+
+
+for day, frame in data.groupby(data.index.date):
+    pass
+    #print(day)
+    #print(frame.index[0:5])
+
+
+# In[26]:
+
+
+full_interpolated = new_hybrid_interpolator(
         data["Sensor Glucose (mg/dL)"], 
         methods={
             'linear': 0.65, 
@@ -305,13 +318,34 @@ interpolated = new_hybrid_interpolator(
     )
 
 
-# In[59]:
+# In[24]:
+
+
+interpolated_ls: List[pd.Series] = []
+for day, frame in data.groupby(data.index.date):
+    interpolated_ls.append(
+        new_hybrid_interpolator(
+            frame["Sensor Glucose (mg/dL)"], 
+            methods={
+                'linear': 0.65, 
+                'akima': 0.25,
+                'polynomial': 0.10
+            },
+            direction='both'
+        )
+    )
+
+interpolated: pd.Series = pd.concat(interpolated_ls)
+
+
+# In[28]:
 
 
 plt.close("all")
 for date in map(str, sorted(set(data.index.date))):
     plt.figure()
-    interpolated[date].plot(**{"label": "interpolated"})
+    full_interpolated[date].plot(**{"label": "fully interpolated"})
+    interpolated[date].plot(**{"label": "interpolated by day"})
     data.loc[date, "Sensor Glucose (mg/dL)"].plot(**{"label": "original"})
     plt.legend()
 

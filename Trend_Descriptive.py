@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[35]:
 
 
 import os
@@ -30,7 +30,7 @@ from typing import List, Dict, NoReturn, Any, Callable, Union, Optional
 from preproc import import_csv
 
 
-# In[86]:
+# In[47]:
 
 
 def dist_plot(series: pd.core.series.Series, dropna: bool = True) -> NoReturn:
@@ -75,10 +75,10 @@ def comparative_hba1c_plot(
     valid_kinds = ["mean", "std", "var"]
     
     if kind in valid_kinds:
-        df.groupby(df.index.dayofyear)[colum_name].            apply(eval(f"np.{kind}")).apply(hba1c).                plot(**{"label":"daily"})
+        df.groupby(df.index.date)[colum_name].            apply(eval(f"np.{kind}")).apply(hba1c).                plot(**{"label":"daily"})
                 
         for key, value in windows.items():
-            ax = df.groupby(df.index.dayofyear)[colum_name].                    apply(eval(f"np.{kind}")).rolling(value).mean().                            apply(hba1c).plot(**{"label":key})
+            ax = df.groupby(df.index.date)[colum_name].                    apply(eval(f"np.{kind}")).rolling(value).mean().                            apply(hba1c).plot(**{"label":key})
     
         ax.set_ylabel("HbA1c %")
         mean_hba1c = glc_to_hba1c(eval(f"df[colum_name].{kind}()"))
@@ -148,7 +148,7 @@ def hourly_trends(df: pd.DataFrame, kind: str = "mean") -> NoReturn:
 ##        
 
 
-# In[3]:
+# In[37]:
 
 
 get_ipython().run_line_magic('matplotlib', 'inline')
@@ -156,50 +156,72 @@ plt.style.use('seaborn')
 plt.rcParams['figure.figsize'] = (15, 8)
 
 
-# In[4]:
+# In[38]:
 
 
-data = import_csv("preprocessed/CareLink-19-apr-2020-3-months.csv")
+data = import_csv("preprocessed/CareLink-26-apr-2020-3-month.csv")
 
 
-# In[5]:
+# In[44]:
+
+
+data.index.week
+
+
+# In[6]:
 
 
 print("start \t:", data.index[0])
 print("end \t:", data.index[-1])
 
 
-# In[6]:
+# In[28]:
 
 
 dist_plot(data["Sensor Glucose (mg/dL)"])
 
 
-# In[83]:
+# In[48]:
 
 
 comparative_hba1c_plot(data, kind="mean")
 
 
-# In[85]:
+# In[49]:
 
 
 comparative_hba1c_plot(data, kind='std')
 
 
-# In[91]:
+# In[61]:
 
 
-latest = data.loc["2020-04-15":"2020-04-19", :]
+month = data.loc["2020-03-01":"2020-04-26", :]
+latest = data.loc["2020-04-22":"2020-04-26", :]
 
 
-# In[100]:
+# In[64]:
 
 
-#latest.loc["2020-04-18", "Sensor Glucose (mg/dL)"].plot()
+comparative_hba1c_plot(month)
+plt.figure()
+comparative_hba1c_plot(latest)
 
 
-# In[93]:
+# In[54]:
+
+
+# maybe we should interpolate grouping by day ?
+
+
+# In[55]:
+
+
+#latest.loc["2020-04-15", "Sensor Glucose (mg/dL)"].interpolate().plot()
+#latest.loc["2020-04-15", "Sensor Glucose (mg/dL)"].plot()
+
+
+# In[56]:
 
 
 sns.scatterplot(
@@ -211,40 +233,58 @@ sns.scatterplot(
 )
 
 
-# In[94]:
+# In[57]:
 
 
-hourly_trends(data)
+hourly_trends(latest)
 
 
-# In[96]:
+# In[16]:
 
 
 #hourly_trends(basal, kind="std")
 
 
-# In[97]:
+# In[17]:
 
 
 basal = basal_only(latest)
 
 
-# In[98]:
+# In[18]:
 
 
 hourly_trends(basal)
 
 
-# In[99]:
+# In[19]:
 
 
 #hourly_trends(basal, kind="std")
 
 
-# In[ ]:
+# In[20]:
 
 
+bar = nonull_indices(latest, "BWZ Carb Input (grams)")
 
+
+# In[21]:
+
+
+bar.hour.to_series().hist()
+
+
+# In[22]:
+
+
+foo = nonull_indices(latest, "BWZ Correction Estimate (U)")
+
+
+# In[23]:
+
+
+foo.hour.to_series().hist()
 
 
 # In[ ]:

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[34]:
 
 
 import os
@@ -31,10 +31,13 @@ from typing import List, Dict, NoReturn, Any, Callable, Union, Optional
 
 from preproc import import_csv
 
+import decorators
 
-# In[2]:
+
+# In[35]:
 
 
+@decorators.time_log("logs/timing/interpolation.jl")
 def dist_plot(series: pd.core.series.Series, dropna: bool = True) -> NoReturn:
     """
         Given a pandas Series, generate a descriptive visualisation 
@@ -59,6 +62,8 @@ def dist_plot(series: pd.core.series.Series, dropna: bool = True) -> NoReturn:
     plt.title(f"Glycaemic Distribution μ = {int(series.mean())}, σ = {int(series.std())}")
 ##
 
+
+@decorators.time_log("logs/timing/interpolation.jl")
 def comparative_hba1c_plot(
     df: pd.core.frame.DataFrame,
     colum_name: str = "Sensor Glucose (mg/dL)",
@@ -295,20 +300,15 @@ plt.close("all")
 pd.concat([data["2020-04-05"], data["2020-04-06"] ]).index
 
 
-# In[20]:
+# In[36]:
 
 
-for day, frame in data.groupby(data.index.date):
-    pass
-    #print(day)
-    #print(frame.index[0:5])
-
-
-# In[26]:
-
-
-full_interpolated = new_hybrid_interpolator(
-        data["Sensor Glucose (mg/dL)"], 
+@decorators.time_log("logs/timing/interpolation.jl")
+def full_direct_interpolation(df: pd.DataFrame, **kw) -> pd.Series:
+    """
+    """
+    return new_hybrid_interpolator(
+        df["Sensor Glucose (mg/dL)"], 
         methods={
             'linear': 0.65, 
             'akima': 0.25,
@@ -316,26 +316,54 @@ full_interpolated = new_hybrid_interpolator(
         },
         direction='both'
     )
+##
 
-
-# In[24]:
-
-
-interpolated_ls: List[pd.Series] = []
-for day, frame in data.groupby(data.index.date):
-    interpolated_ls.append(
-        new_hybrid_interpolator(
-            frame["Sensor Glucose (mg/dL)"], 
-            methods={
-                'linear': 0.65, 
-                'akima': 0.25,
-                'polynomial': 0.10
-            },
-            direction='both'
+@decorators.time_log("logs/timing/interpolation.jl")
+def groupby_interpolation(df: pd.DataFrame, **kw) -> pd.Series:
+    """
+    """
+    
+    interpolated_ls: List[pd.Series] = []
+    
+    for day, frame in df.groupby(df.index.date):
+        interpolated_ls.append(
+            new_hybrid_interpolator(
+                frame["Sensor Glucose (mg/dL)"], 
+                methods={
+                    'linear': 0.65, 
+                    'akima': 0.25,
+                    'polynomial': 0.10
+                },
+                direction='both'
+            )
         )
-    )
+    
+    return pd.concat(interpolated_ls)
+##
 
-interpolated: pd.Series = pd.concat(interpolated_ls)
+
+# In[ ]:
+
+
+
+
+
+# In[30]:
+
+
+get_ipython().run_cell_magic('timeit', '', 'full_interpolated = new_hybrid_interpolator(\n        data["Sensor Glucose (mg/dL)"], \n        methods={\n            \'linear\': 0.65, \n            \'akima\': 0.25,\n            \'polynomial\': 0.10\n        },\n        direction=\'both\'\n    )')
+
+
+# In[32]:
+
+
+463/69.3
+
+
+# In[31]:
+
+
+get_ipython().run_cell_magic('timeit', '', 'interpolated_ls: List[pd.Series] = []\nfor day, frame in data.groupby(data.index.date):\n    interpolated_ls.append(\n        new_hybrid_interpolator(\n            frame["Sensor Glucose (mg/dL)"], \n            methods={\n                \'linear\': 0.65, \n                \'akima\': 0.25,\n                \'polynomial\': 0.10\n            },\n            direction=\'both\'\n        )\n    )\n    \ninterpolated: pd.Series = pd.concat(interpolated_ls)')
 
 
 # In[28]:

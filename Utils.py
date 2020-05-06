@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[35]:
+# In[1]:
 
 
 
@@ -24,7 +24,7 @@ plt.style.use('seaborn')
 plt.rcParams['figure.figsize'] = (15, 8)
 
 
-# In[36]:
+# In[2]:
 
 
 def comparative_hba1c_plot(
@@ -93,7 +93,7 @@ def comparative_hba1c_plot(
 ##
 
 
-# In[37]:
+# In[9]:
 
 
 def proportions_visualiser(
@@ -158,7 +158,7 @@ def proportions_visualiser(
     TBR = lambda y: 100 * y[ (y < limits["low"]) ].count() / y.count()
     TAR = lambda y: 100 * y[ (y >= limits["high"]) ].count() / y.count()
     
-    _proportions = df[colum_name].groupby(data.index.date).apply(eval(f"{kind}"))
+    _proportions = df[colum_name].groupby(df.index.date).apply(eval(f"{kind}"))
     
     _proportions.plot(**{"label": "daily"})
     
@@ -173,43 +173,22 @@ def proportions_visualiser(
 ##    
 
 
-# In[9]:
+# In[12]:
 
 
-limits: Dict[str,int] = {
-    "low": 70,
-    "high": 180
-}
+#data = import_csv("preprocessed/CareLink-19-apr-2020-3-months.csv")
 
 
-# In[13]:
+# In[7]:
 
 
-"low" in limits.keys()
+#comparative_hba1c_plot(data, kind="mean")
 
 
-# In[15]:
+# In[11]:
 
 
-comparative_hba1c_plot.__name__
-
-
-# In[18]:
-
-
-data = import_csv("preprocessed/CareLink-19-apr-2020-3-months.csv")
-
-
-# In[30]:
-
-
-comparative_hba1c_plot(data, kind="mean")
-
-
-# In[34]:
-
-
-help(proportions_visualiser)
+#proportions_visualiser(data)
 
 
 # In[ ]:

@@ -17,6 +17,7 @@ If you decide to test it on yourself it is **YOUR RESPONSIBILITY**. Nothing with
 This project departed from my own knowledge of diabetes physiopathology. However, to make of this a valuable state-of-the-art tool I have decided to add also some docs. Publicly available scientific papers. These will be found in ```Docs/```. If you want to consult them, these are the original sources:
 
 1. [review\_of\_formulas.pdf](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4960276/)
+2. [glycaemic-variability.pdf](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5846572/pdf/dia.2017.0187.pdf)
 
 If you have found anything that you consider pertinent/valuable for this project and have the proper copyright/ownership rights to share it, please do so! I'd be ravished to include it in the project ([email it to me](mailto:gmaganna.biomed@gmail.com), or add it to your fork of this repo and send me a pull request).
 

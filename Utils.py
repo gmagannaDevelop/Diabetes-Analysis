@@ -1,12 +1,15 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[9]:
+# In[54]:
 
 
 
 # Annotations :
 from typing import List, Dict, Callable, NoReturn, Any, Optional, Union
+
+# Datetime :
+import datetime
 
 # Data and numerical :
 import numpy as np
@@ -269,6 +272,147 @@ def dist_plot(series: pd.core.series.Series, dropna: bool = True) -> NoReturn:
 
 
 #glycaemic_variability(data)
+
+
+# In[48]:
+
+
+Δt = data.index.to_series().diff()
+
+
+# In[49]:
+
+
+Δg = data["Sensor Glucose (mg/dL)"].diff()
+
+
+# In[56]:
+
+
+datetime.timedelta(minutes=15)
+
+
+# In[73]:
+
+
+thres = datetime.timedelta(minutes=30)
+new_Δt = Δt[ Δt < thres ]
+
+
+# In[74]:
+
+
+new_Δt.head()
+
+
+# In[75]:
+
+
+new_Δg = Δg[ new_Δt.index ]
+
+
+# In[79]:
+
+
+sel_Δg = new_Δg.dropna()
+
+
+# In[80]:
+
+
+sel_Δt = new_Δt[ sel_Δg.index ]
+
+
+# In[84]:
+
+
+#len(sel_Δg) == len(new_Δg)
+
+
+# In[90]:
+
+
+sel_Δt = sel_Δt.apply(lambda x: x.seconds)
+
+
+# In[94]:
+
+
+squared = sel_Δt.apply(lambda x: x**2) + sel_Δg.apply(lambda x: x**2)
+
+
+# In[98]:
+
+
+L = squared.apply(np.sqrt).sum()
+
+
+# In[101]:
+
+
+Lo = sel_Δt.sum()
+
+
+# In[102]:
+
+
+L/Lo
+
+
+# In[ ]:
+
+
+
+
+
+# In[122]:
+
+
+r = data.groupby(data.index.date)
+GVP = pd.Series(index=data.index.date, dtype=np.float64)
+
+
+# In[129]:
+
+
+for date, frame in r:
+    Δt = frame.index.to_series().diff()
+    Δg = frame["Sensor Glucose (mg/dL)"].diff()
+    thres = datetime.timedelta(minutes=30)
+    new_Δt = Δt[ Δt < thres ]
+    new_Δg = Δg[ new_Δt.index ]
+    sel_Δg = new_Δg #.dropna()
+    sel_Δt = new_Δt #[ sel_Δg.index ]
+    sel_Δt = sel_Δt.apply(lambda x: x.seconds)
+    squared = sel_Δt.apply(lambda x: x**2) + sel_Δg.apply(lambda x: x**2)
+    L = squared.apply(np.sqrt).sum()
+    Lo = sel_Δt.sum()
+    #print(f" ratio :{L/Lo}")
+    #print(f"{date} : {(L/Lo)*100 }")
+    GVP[date] = np.abs((L/Lo - 1)*100)
+
+
+# In[ ]:
+
+
+
+
+
+# In[140]:
+
+
+comparative_hba1c_plot(data, kind="mean")
+plt.figure()
+comparative_hba1c_plot(data, kind="std")
+plt.figure()
+GVP.plot(**{"label": "GVP"})
+glycaemic_variability(data, windows={})
+
+
+# In[145]:
+
+
+data["Sensor Glucose (mg/dL)"]["2020-02-19"].plot()
 
 
 # In[ ]:

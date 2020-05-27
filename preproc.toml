@@ -1,0 +1,28 @@
+
+# What to do.
+[tasks]
+sync = false
+preprocess = true
+interpolate = true
+
+# Directories to read from / write to.
+[locations]
+source = "remote_data"          # Raw data, exported from medtronic's website.
+preprocessed = "data_test"   # Where to write processed data, without interpolation
+interpolated = "interpolated"   # Idem, but interpolated.
+
+# How to do the processing
+[specs]
+interpolation = "full"          # Either "full" or "daily"
+verbose = true
+
+# Hardware optimisation
+[hardware]
+n_threads = 4 # I know my system has only 4 threads
+
+# File-specific specs (Carelink, FreeStyle, etc.)
+[file.specs]
+date = "Date"
+time = "Time"
+
+[files]

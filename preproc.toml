@@ -2,19 +2,29 @@
 # What to do.
 [tasks]
 sync = false
-preprocess = true
-interpolate = true
+preprocess = true   # I can't think of a scenario where this would be false.
+interpolate = false
 
 # Directories to read from / write to.
 [locations]
 source = "remote_data"          # Raw data, exported from medtronic's website.
-preprocessed = "data_test"   # Where to write processed data, without interpolation
+preprocessed = "data_test"      # Where to write processed data, without interpolation
 interpolated = "interpolated"   # Idem, but interpolated.
+history = ""                    # Name of the history file (.toml)
 
 # How to do the processing
 [specs]
 interpolation = "full"          # Either "full" or "daily"
-verbose = true
+verbose = false
+ignore_lock = false
+diff_intervals = [15, 30, 60, 120]
+
+[interpolation.specs]
+methods = { linear = 0.65, akima = 0.25, polynomial = 0.10 }
+direction = "both"
+limit = 60
+limit_area = "inside"
+order = 2
 
 # Hardware optimisation
 [hardware]
@@ -22,7 +32,9 @@ n_threads = 4 # I know my system has only 4 threads
 
 # File-specific specs (Carelink, FreeStyle, etc.)
 [file.specs]
+type = "medtronic"
 date = "Date"
 time = "Time"
-
-[files]
+header_row_num = 7
+dummy_index = "Index"
+glycaemia_column = "Sensor Glucose (mg/dL)"

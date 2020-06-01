@@ -30,6 +30,7 @@ from decorators import time_log, time_this
 from customobjs import objdict
 ################################################################################
 
+
 def exit_explain_usage():
     """
         Pretty self explanatory, isn't it ?
@@ -39,6 +40,15 @@ def exit_explain_usage():
     exit()
 ##
 
+def is_non_zero_file(fpath):
+    """
+    """
+    try:
+        return os.path.isfile(fpath) and os.path.getsize(fpath) > 0
+    except:
+        return False
+##
+
 def parse_config(config_file: str) -> objdict:
     """
     """
@@ -46,6 +56,16 @@ def parse_config(config_file: str) -> objdict:
         with open(config_file, "r") as f:
             _config = toml.load(f, _dict=objdict)
         return _config
+    except:
+        raise
+##
+
+def update_lock(lock_file: str, data: objdict) -> NoReturn:
+    """
+    """
+    try:
+        with open(lock_file, "w") as f:
+            toml.dump(data, f)
     except:
         raise
 ##
@@ -167,6 +187,55 @@ def hybrid_interpolator(
     return corrected
 ##
 
+def new_hybrid_interpolator(
+    data: pd.core.series.Series,
+    methods: Dict[str,float] = {
+        'linear': 0.65,
+        'spline': 0.35
+    },
+    direction: str = 'forward',
+    limit: int = 120,
+    limit_area: Optional[str] = None,
+    order: int = 2,
+    **kw
+) -> pd.core.series.Series:
+    """
+    """
+
+    limit_area = limit_area or 'inside'
+
+    weight_sum = sum(weight for weight in methods.values())
+    if not np.isclose(weight_sum, 1):
+        raise Exception(f'Sum of weights {weight_sum} != 1')
+
+    resampled: Dict[str,pd.core.series.Series] = {}
+
+    for key, weight in methods.items():
+        resampled.update({
+          key: weight * data.interpolate(
+              method=key,
+              order=order,
+              limit_area=limit_area,
+              limit=limit
+          )
+        })
+
+    return reduce(lambda x, y: x+y, resampled.values())
+##
+
+def add_time_periodicity(df: pd.DataFrame) -> NoReturn:
+    """
+    """
+    # Not sure if this is useful :
+    #y['hour'] = y.index.hour
+    #y['minutes'] = min_res_t_series
+    # Coulmns to capture daily periodicity :
+    T = 1439
+    min_res_t_series = pd.Series(df.index.hour*60 + df.index.minute)
+    df['x(t)'] = min_res_t_series.apply(lambda x: np.cos(2*np.pi*(x) / T))
+    df['y(t)'] = min_res_t_series.apply(lambda x: np.sin(2*np.pi*(x) / T))
+##
+
 def import_csv(
     filename: str,
     column: Optional[str] = None
@@ -187,7 +256,6 @@ def import_csv(
     return _y
 ##
 
-@time_this
 def grep_idx(file_lines: List[str], the_string: str) -> List[int]:
     """
         Function definition inpired by Dorian Grv :
@@ -200,29 +268,48 @@ def grep_idx(file_lines: List[str], the_string: str) -> List[int]:
     ide = [i for i, item in enumerate(file_lines) if item.startswith(the_string)]
     return ide
 
-
-
-@time_this
 @time_log("logs/preprocessing.jsonl")
 def preproc(config: objdict, file: str) -> NoReturn:
     """
         Congfig file
-    """
 
+        this should eventually be renamed to preproc medtronic
+
+        From the first lines of the file we can get this kind of dict :
+        {
+            'Last Name': 'Maganna',
+            'First Name': 'Gustavo',
+            'Patient ID': nan,
+            'Start Date': '19/04/20 12:00:00 AM',
+            'End Date': '16/05/20 11:59:59 PM',
+            'Device': 'Serial Number',
+            'MiniMed 640G': 'NG1988812H',
+            ' MMT-1512/1712': nan
+        }
+
+    """
     in_file = os.path.join(config.locations.source, file)
     with open(in_file, "r") as f:
-        f_list = f.readlines()[6:]
-        idx_to_remove = grep_idx(f_list, "-------,")
-        _tmp_ixs = []
-        # Quadratic complexity :(
-        for ix in idx_to_remove:
-            _tmp_ixs.extend([ix-1, ix+1])
-        idx_to_remove.extend(
-            [i for i in _tmp_ixs if i in range(len(f_list))]
-        )
+        # Get file information (_fi) :
+        _fi = pd.read_csv(f, nrows=1).squeeze().to_dict()
 
-        for i in reversed(sorted(idx_to_remove)):
-            _ = f_list.pop(i)
+    with open(in_file, "r") as f:
+        # Read the actual data :
+        f_list = f.readlines()[config.file.specs.header_row_num-1:]
+
+    idx_to_remove = grep_idx(f_list, "-------,")
+    _tmp_ixs = []
+    # Quadratic complexity :(
+    for ix in idx_to_remove:
+        #print("remove")
+        _tmp_ixs.extend([ix-1, ix+1])
+    idx_to_remove.extend(
+        [i for i in _tmp_ixs if i in range(len(f_list))]
+    )
+    # If we didn't sort and reverse, we'd be modifying the list's index order
+    # i.e. not removing the desired elements but their neighbours instead.
+    for i in reversed(sorted(idx_to_remove)):
+        _ = f_list.pop(i)
 
     f_str = "".join(f_list)
 
@@ -230,54 +317,98 @@ def preproc(config: objdict, file: str) -> NoReturn:
         x = pd.read_csv(g)
 
     # Date-time indexing :
-    x["DateTime"] =  x["Date"] + " " + x["Time"]
-    x.drop(["Date", "Time"], axis=1, inplace=True)
+    x["DateTime"] = x[config.file.specs.date] + " " + x[config.file.specs.time]
+    x.drop([config.file.specs.date, config.file.specs.time], axis=1, inplace=True)
     y = time_indexed_df(x, 'DateTime')
-    y.drop("Index", axis=1, inplace=True)
+    if config.file.specs.dummy_index:
+        y.drop(config.file.specs.dummy_index, axis=1, inplace=True)
     y.index = y.index.map(lambda t: t.replace(second=0))
 
     # Merge duplicates :
     y = merge_on_duplicate_idx(y, verbose=config.specs.verbose)
 
-    # Useful having an hour column, for groupby opperations :
-    y['hour'] = y.index.hour
-    # THIS DELTA CALCULATION IS WRONG !
-    # Deltas within valuable intervals :
-    for i in [10, 20, 30]:
-        y[f'd{i}'] = y['Sensor Glucose (mg/dL)'].diff(i)
+    if config.tasks.interpolate:
+        y = y.resample("1T").asfreq()
+        y[config.file.specs.glycaemia_column] = new_hybrid_interpolator(
+            y[config.file.specs.glycaemia_column],
+            **config.interpolation.specs
+        )
+        # Deltas within valuable intervals :
+        for i in config.specs.diff_intervals:
+            y[f'd{i}'] = y['Sensor Glucose (mg/dL)'].diff(i)
 
-    # Coulmns to capture daily periodicity :
-    T = 1439
-    min_res_t_series = pd.Series(y.hour*60 + y.index.minute)
-    y['minutes'] = min_res_t_series
-    y['x(t)'] = min_res_t_series.apply(lambda x: np.cos(2*np.pi*(x) / T))
-    y['y(t)'] = min_res_t_series.apply(lambda x: np.sin(2*np.pi*(x) / T))
+    add_time_periodicity(y)
 
     # Fill missing basal values :
     y["Basal Rate (U/h)"].fillna(method="ffill", inplace=True)
 
-    out_file = os.path.join(config.locations.preprocessed, file)
+    get_date = lambda x: x.split(" ")[0].replace("/", "-")
+    _st, _end = map(get_date, [_fi['Start Date'], _fi['End Date']])
+    out_file = f"{_fi['MiniMed 640G']}_{_fi['Last Name']}_{_fi['First Name']}_({_st})_({_end})"
+    if config.tasks.interpolate:
+        out_file += "_interpolated.csv"
+        out_file = os.path.join(config.locations.interpolated, out_file)
+    else:
+        out_file += ".csv"
+        out_file = os.path.join(config.locations.preprocessed, out_file)
+
     y.to_csv(out_file)
 ##
 
 def main(config_file: str) -> NoReturn:
     """
     """
+    global DEFAULT_LOCK_FILE
+    if is_non_zero_file(DEFAULT_LOCK_FILE):
+        history = parse_config(DEFAULT_LOCK_FILE)
+    else:
+        history = objdict({
+            "files": objdict({
+                "processed": []
+            })
+        })
+        update_lock(DEFAULT_LOCK_FILE, history)
+
     config = parse_config(config_file)
     #get_csv_files = lambda loc: [os.path.join(loc, x) for x in os.listdir(loc) if x[-4:] == ".csv"]
     get_csv_files = lambda loc: [x for x in os.listdir(loc) if x[-4:] == ".csv"]
 
     csv_files = get_csv_files(config.locations.source)
 
-    _preproc = partial(preproc, config)
-    with futures.ThreadPoolExecutor(max_workers=config.hardware.n_threads) as pool:
-        pool.map(_preproc, csv_files)
+    if config.specs.ignore_lock:
+        files_to_process = csv_files
+    else:
+        files_to_process = list(set(csv_files) - set(history.files.processed))
+
+    if files_to_process:
+        print(f"\n{len(files_to_process)} files to process : ")
+        for file in files_to_process:
+            print(f"\t{file}")
+        _preproc = partial(preproc, config)
+        # DO NOT USE ASYNC UNTIL THE CODE IS WORKING
+        with futures.ThreadPoolExecutor(max_workers=config.hardware.n_threads) as pool:
+            pool.map(_preproc, files_to_process)
+        #list(map(_preproc, files_to_process))
+        # If the execution arrived to this point, we can safely
+        # say that we've preprocessed the specified files
+        history.files.processed += files_to_process
+        history.files.processed = list(set(history.files.processed))
+        update_lock(DEFAULT_LOCK_FILE, history)
+    else:
+        print("No files to process, please verify the following :")
+        print(f" CONFIG : {config_file} ")
+        print(f" LOCK :  {DEFAULT_LOCK_FILE} ")
+        print(f" Source directory (parsed from CONFIG) : {config.locations.source}/")
 ##
 
 
 if __name__ == "__main__":
 
+    # These DEFAULT FILES ARE DEFINED AT TOP LEVEL
+    global DEFAULT_CONFIG_FILE
+    global DEFAULT_LOCK_FILE
     DEFAULT_CONFIG_FILE = sys.argv[0].replace(".py", ".toml")
+    DEFAULT_LOCK_FILE = sys.argv[0].replace(".py", "_lock.toml")
 
     if len(sys.argv) != 2:
         if DEFAULT_CONFIG_FILE in os.listdir("."):

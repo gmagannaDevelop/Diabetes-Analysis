@@ -9,3 +9,6 @@ preprocessed/*
 tmp_data/*
 data_sync_log.jsonl
 interpolated/*
+remote_data/
+.DS_Store
+.*.swp

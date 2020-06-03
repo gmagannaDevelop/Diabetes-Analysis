@@ -226,12 +226,11 @@ def new_hybrid_interpolator(
 def add_time_periodicity(df: pd.DataFrame) -> NoReturn:
     """
     """
-    # Not sure if this is useful :
-    #y['hour'] = y.index.hour
-    #y['minutes'] = min_res_t_series
     # Coulmns to capture daily periodicity :
     T = 1439
     min_res_t_series = pd.Series(df.index.hour*60 + df.index.minute)
+    df['hour'] = df.index.hour
+    df['minutes'] = min_res_t_series
     df['x(t)'] = min_res_t_series.apply(lambda x: np.cos(2*np.pi*(x) / T))
     df['y(t)'] = min_res_t_series.apply(lambda x: np.sin(2*np.pi*(x) / T))
 ##
@@ -336,6 +335,7 @@ def preproc(config: objdict, file: str) -> NoReturn:
         # Deltas within valuable intervals :
         for i in config.specs.diff_intervals:
             y[f'd{i}'] = y['Sensor Glucose (mg/dL)'].diff(i)
+            y[f'd{i}d2'] = y[f'd{i}'].diff(2)
 
     add_time_periodicity(y)
 
@@ -381,13 +381,19 @@ def main(config_file: str) -> NoReturn:
         files_to_process = list(set(csv_files) - set(history.files.processed))
 
     if files_to_process:
+        for task, val in config.tasks.items():
+            print(f"{task}\t:\t{val}")
         print(f"\n{len(files_to_process)} files to process : ")
         for file in files_to_process:
             print(f"\t{file}")
         _preproc = partial(preproc, config)
         # DO NOT USE ASYNC UNTIL THE CODE IS WORKING
-        with futures.ThreadPoolExecutor(max_workers=config.hardware.n_threads) as pool:
-            pool.map(_preproc, files_to_process)
+        if config.tasks.debug:
+            for file in files_to_process:
+                _preproc(file)
+        else:
+            with futures.ThreadPoolExecutor(max_workers=config.hardware.n_threads) as pool:
+                pool.map(_preproc, files_to_process)
         #list(map(_preproc, files_to_process))
         # If the execution arrived to this point, we can safely
         # say that we've preprocessed the specified files

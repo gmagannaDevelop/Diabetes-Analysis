@@ -2,8 +2,9 @@
 # What to do.
 [tasks]
 sync = false
+debug = true
 preprocess = true   # I can't think of a scenario where this would be false.
-interpolate = false
+interpolate = true
 
 # Directories to read from / write to.
 [locations]

@@ -70,7 +70,7 @@ def update_lock(lock_file: str, data: objdict) -> NoReturn:
         raise
 ##
 
-@time_log("logs/preprocessing.jsonl")
+#@time_log("logs/preprocessing.jsonl")
 def time_indexed_df(df1: pd.core.frame.DataFrame, columname: str) -> pd.core.frame.DataFrame:
     """
         Cast into a time-indexed dataframe.
@@ -317,10 +317,10 @@ def preproc(config: objdict, file: str) -> NoReturn:
 
     # Date-time indexing :
     x["DateTime"] = x[config.file.specs.date] + " " + x[config.file.specs.time]
-    x.drop([config.file.specs.date, config.file.specs.time], axis=1, inplace=True)
+    x = x.drop([config.file.specs.date, config.file.specs.time], axis=1)
     y = time_indexed_df(x, 'DateTime')
     if config.file.specs.dummy_index:
-        y.drop(config.file.specs.dummy_index, axis=1, inplace=True)
+        y = y.drop(config.file.specs.dummy_index, axis=1)
     y.index = y.index.map(lambda t: t.replace(second=0))
 
     # Merge duplicates :
@@ -333,9 +333,11 @@ def preproc(config: objdict, file: str) -> NoReturn:
             **config.interpolation.specs
         )
         # Deltas within valuable intervals :
+        """
         for i in config.specs.diff_intervals:
             y[f'd{i}'] = y['Sensor Glucose (mg/dL)'].diff(i)
             y[f'd{i}d2'] = y[f'd{i}'].diff(2)
+        """
 
     add_time_periodicity(y)
 

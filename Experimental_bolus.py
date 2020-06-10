@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[34]:
+# In[1]:
 
 
 import os
@@ -34,7 +34,7 @@ from preproc import import_csv
 import decorators
 
 
-# In[35]:
+# In[2]:
 
 
 @decorators.time_log("logs/timing/interpolation.jl")
@@ -243,7 +243,7 @@ for i in range(1, 10):
 # 
 # ‘krogh’, ‘piecewise_polynomial’, ‘spline’, ‘pchip’, ‘akima’
 
-# In[15]:
+# In[10]:
 
 
 def new_hybrid_interpolator(
@@ -255,7 +255,8 @@ def new_hybrid_interpolator(
     direction: str = 'forward',
     limit: int = 120,
     limit_area: Optional[str] = None,
-    order: int = 2
+    order: int = 2,
+    **kw
 ) -> pd.core.series.Series:
     """
     """
@@ -282,25 +283,25 @@ def new_hybrid_interpolator(
 ##
 
 
-# In[16]:
+# In[11]:
 
 
 plt.close("all")
 
 
-# In[17]:
+# In[12]:
 
 
 #data[ data.index.month == 4 ].loc["Sensor Glucose (mg/dL)"].plot()
 
 
-# In[18]:
+# In[13]:
 
 
 pd.concat([data["2020-04-05"], data["2020-04-06"] ]).index
 
 
-# In[36]:
+# In[14]:
 
 
 @decorators.time_log("logs/timing/interpolation.jl")
@@ -342,31 +343,84 @@ def groupby_interpolation(df: pd.DataFrame, **kw) -> pd.Series:
 ##
 
 
-# In[ ]:
+# In[15]:
 
 
+woo = sorted(list(map(str, set(data.index.date))))
 
 
-
-# In[30]:
-
-
-get_ipython().run_cell_magic('timeit', '', 'full_interpolated = new_hybrid_interpolator(\n        data["Sensor Glucose (mg/dL)"], \n        methods={\n            \'linear\': 0.65, \n            \'akima\': 0.25,\n            \'polynomial\': 0.10\n        },\n        direction=\'both\'\n    )')
+# In[16]:
 
 
-# In[32]:
+len(woo)
+
+
+# In[17]:
+
+
+woo_dict = {
+    i: woo[0:i+1] for i in range(len(woo))
+}
+
+
+# In[18]:
+
+
+for i in range(1,len(woo)):
+    _ = full_direct_interpolation(
+        data.loc[woo[0]:woo[i], :],
+        days=i,
+    )
+    __ = groupby_interpolation(
+        data.loc[woo[0]:woo[i], :],
+        days=i
+    )
+
+
+# In[20]:
+
+
+#%%timeit
+full_interpolated = new_hybrid_interpolator(
+        data["Sensor Glucose (mg/dL)"], 
+        methods={
+            'linear': 0.65, 
+            'akima': 0.25,
+            'polynomial': 0.10
+        },
+        direction='both',
+        comment="dub dub da dup doop"
+    )
+
+
+# In[19]:
 
 
 463/69.3
 
 
-# In[31]:
+# In[21]:
 
 
-get_ipython().run_cell_magic('timeit', '', 'interpolated_ls: List[pd.Series] = []\nfor day, frame in data.groupby(data.index.date):\n    interpolated_ls.append(\n        new_hybrid_interpolator(\n            frame["Sensor Glucose (mg/dL)"], \n            methods={\n                \'linear\': 0.65, \n                \'akima\': 0.25,\n                \'polynomial\': 0.10\n            },\n            direction=\'both\'\n        )\n    )\n    \ninterpolated: pd.Series = pd.concat(interpolated_ls)')
+#%%timeit 
+interpolated_ls: List[pd.Series] = []
+for day, frame in data.groupby(data.index.date):
+    interpolated_ls.append(
+        new_hybrid_interpolator(
+            frame["Sensor Glucose (mg/dL)"], 
+            methods={
+                'linear': 0.65, 
+                'akima': 0.25,
+                'polynomial': 0.10
+            },
+            direction='both'
+        )
+    )
+    
+interpolated: pd.Series = pd.concat(interpolated_ls)
 
 
-# In[28]:
+# In[22]:
 
 
 plt.close("all")
@@ -400,7 +454,7 @@ interpolators = {
 }
 
 
-# In[20]:
+# In[22]:
 
 
 for day, frame in data.groupby(data.index.day):

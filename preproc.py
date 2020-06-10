@@ -235,6 +235,22 @@ def add_time_periodicity(df: pd.DataFrame) -> NoReturn:
     df['y(t)'] = min_res_t_series.apply(lambda x: np.sin(2*np.pi*(x) / T))
 ##
 
+def compute_time_periodicity(df: pd.DataFrame) -> NoReturn:
+    """
+    """
+    # Coulmns to capture daily periodicity :
+    T = 1439
+    min_res_t_series = pd.Series(df.index.hour*60 + df.index.minute)
+    _tmp = pd.DataFrame({
+        'hour': df.index.hour,
+        'minute': min_res_t_series,
+        'x(t)': min_res_t_series.apply(lambda x: np.cos(2*np.pi*x / T)),
+        'y(t)': min_res_t_series.apply(lambda x: np.sin(2*np.pi*x / T))
+    })
+    _tmp.index = df.index
+    return _tmp
+##
+
 def import_csv(
     filename: str,
     column: Optional[str] = None
@@ -313,7 +329,7 @@ def preproc(config: objdict, file: str) -> NoReturn:
     f_str = "".join(f_list)
 
     with io.StringIO(f_str) as g:
-        x = pd.read_csv(g)
+        x = pd.read_csv(g, low_memory=False)
 
     # Date-time indexing :
     x["DateTime"] = x[config.file.specs.date] + " " + x[config.file.specs.time]
@@ -339,7 +355,8 @@ def preproc(config: objdict, file: str) -> NoReturn:
             y[f'd{i}d2'] = y[f'd{i}'].diff(2)
         """
 
-    add_time_periodicity(y)
+    periodicity_df = compute_time_periodicity(y)
+    y = y.join(periodicity_df)
 
     # Fill missing basal values :
     y["Basal Rate (U/h)"].fillna(method="ffill", inplace=True)

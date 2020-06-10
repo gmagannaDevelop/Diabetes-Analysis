@@ -1,10 +1,11 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[100]:
 
 
 import os
+import toml
 import multiprocessing as mp
 from functools import reduce, partial
 
@@ -27,10 +28,11 @@ from sklearn import preprocessing
 
 from typing import List, Dict, NoReturn, Any, Callable, Union, Optional
 
-from preproc import import_csv
+from preproc import import_csv, new_hybrid_interpolator
+from customobjs import objdict
 
 
-# In[2]:
+# In[192]:
 
 
 def dist_plot(series: pd.core.series.Series, dropna: bool = True, sig: Optional[int] = None) -> NoReturn:
@@ -184,9 +186,9 @@ def hourly_trends(df: pd.DataFrame, kind: str = "mean", deltas: Optional[List[in
     
     if kind in valid_kinds:
         figs = [
-            df.groupby(df.index.hour)[f'd{i}'].
-                apply(eval(f"np.{kind}")).
-                    plot(label=f"{i} ") 
+            df.groupby(df.index.hour)[f'd{i}']\
+                .apply(eval(f"np.{kind}"))\
+                    .plot(label=f"{i} ") 
             for i in deltas
         ]
         figs[-1].legend()
@@ -206,56 +208,186 @@ plt.style.use('seaborn')
 plt.rcParams['figure.figsize'] = (15, 8)
 
 
-# In[19]:
+# In[11]:
 
 
-data = import_csv("interpolated/NG1988812H_Maganna_Gustavo_(8-03-20)_(30-05-20)_interpolated.csv")
+get_ipython().system('ls interpolated/ | grep 05-20 | grep 9-06')
 
 
-# In[20]:
+# In[151]:
 
 
-#data.columns
+data = import_csv("interpolated/NG1988812H_Maganna_Gustavo_(27-05-20)_(9-06-20)_interpolated.csv")
 
 
-# In[21]:
+# In[68]:
 
 
-#help(pd.DataFrame.to_csv)
+data.columns
 
 
-# In[22]:
+# In[194]:
+
+
+deltas = [1, 15, 30, 60, 120]
+woo = pd.DataFrame()
+woo
+
+
+# In[179]:
+
+
+def compute_time_periodicity(df: pd.DataFrame) -> NoReturn:
+    """
+    """
+    # Coulmns to capture daily periodicity :
+    T = 1439
+    min_res_t_series = pd.Series(df.index.hour*60 + df.index.minute)
+    _tmp = pd.DataFrame({
+        'hour': df.index.hour,
+        'minute': min_res_t_series,
+        'x(t)': min_res_t_series.apply(lambda x: np.cos(2*np.pi*x / T)),
+        'y(t)': min_res_t_series.apply(lambda x: np.sin(2*np.pi*x / T))
+    })
+    _tmp.index = df.index
+    return _tmp
+##
+
+
+# In[170]:
+
+
+pd.Series(data.index.hour*60 + data.index.minute).apply(lambda x: np.sin(2*np.pi*x / 1439))
+
+
+# In[187]:
+
+
+data = data.drop(["x(t)", "y(t)", "minute", "hour"], axis="columns")
+fuckme = compute_time_periodicity(data)
+data = data.join(fuckme)
+
+
+# In[188]:
+
+
+data
+
+
+# In[150]:
+
+
+#pd.concat([data, compute_time_periodicity(data)], axis="columns")
+
+
+# In[195]:
+
+
+for i in deltas:
+    woo[f"d{i}"] = data["Sensor Glucose (mg/dL)"].diff(i)
+
+
+# In[196]:
+
+
+data  = data.join(woo)
+
+
+# In[163]:
+
+
+data["Sensor Glucose (mg/dL)"].dropna().shape, data.shape
+
+
+# In[89]:
+
+
+# sns.distplot(woo.d30)
+
+
+# In[153]:
 
 
 print("start \t:", data.index[0])
 print("end \t:", data.index[-1])
 
 
-# In[23]:
+# In[152]:
 
 
 dist_plot(data["Sensor Glucose (mg/dL)"])
 
 
-# In[24]:
+# In[17]:
 
 
 comparative_hba1c_plot(data, kind="mean")
 
 
-# In[25]:
+# In[18]:
 
 
 comparative_hba1c_plot(data, kind='std')
 
 
-# In[26]:
+# In[19]:
 
 
 proportions_visualiser(data, kind="tir")
 
 
-# In[27]:
+# In[66]:
+
+
+"""
+export = data["2020-06-01":"2020-06-09"].copy()
+export["Sensor Glucose (mg/dL)"].plot()
+plt.figure()
+export["Basal Rate (U/h)"].plot()
+"""
+
+
+# In[64]:
+
+
+"""
+with open("preproc.toml", "r") as f:
+    config = toml.load(f, _dict=objdict)
+config.interpolation.specs
+"""
+
+
+# In[61]:
+
+
+# Visualise changes : 
+"""
+new_hybrid_interpolator(export["Sensor Glucose (mg/dL)"], **config.interpolation.specs).plot(label="interpolated")
+export["Sensor Glucose (mg/dL)"].plot(label="original")
+plt.legend()
+plt.figure()
+export["Basal Rate (U/h)"].plot(label="Basal")
+plt.legend()
+plt.figure()
+export["BWZ Carb Ratio (g/U)"].fillna(method="ffill").plot(label="Ratio")
+plt.legend()
+"""
+
+
+# In[62]:
+
+
+"""
+export["Sensor Glucose (mg/dL)"] = new_hybrid_interpolator(
+    export["Sensor Glucose (mg/dL)"], 
+    **config.interpolation.specs
+)
+export["BWZ Carb Ratio (g/U)"] = export["BWZ Carb Ratio (g/U)"].fillna(method="ffill")
+export[["Sensor Glucose (mg/dL)", "BWZ Carb Ratio (g/U)", "Basal Rate (U/h)"]].to_csv("multivariate_diabetic.csv")
+"""
+
+
+# In[199]:
 
 
 dates = pd.unique(data.index.date)
@@ -263,30 +395,31 @@ n_total = len(dates)
 print(f"Number of days in data : {len(dates)}")
 
 
-# In[28]:
+# In[214]:
 
 
 n_month = 30
 n_latest = 4
-month = data.loc[dates[len(dates) - n_month]:dates[-1], :] if n_month < n_total else None
+#month = data.loc[dates[len(dates) - n_month]:dates[-1], :] if n_month < n_total else None
 latest = data.loc[dates[len(dates)- n_latest]:dates[-1], :] if n_latest < n_total else None
+lday = data.loc[dates[len(dates)- 1]:dates[-1], :] if n_latest < n_total else None
 
 
-# In[29]:
+# In[207]:
 
 
-comparative_hba1c_plot(month)
+#comparative_hba1c_plot(month)
 plt.figure()
 comparative_hba1c_plot(latest)
 
 
-# In[30]:
+# In[205]:
 
 
 # maybe we should interpolate grouping by day ?
 
 
-# In[31]:
+# In[221]:
 
 
 #latest.loc["2020-04-15", "Sensor Glucose (mg/dL)"].interpolate().plot()
@@ -294,9 +427,10 @@ comparative_hba1c_plot(latest)
 latest.columns
 
 
-# In[32]:
+# In[198]:
 
 
+"""
 sns.scatterplot(
     data=latest,
     x="minutes",
@@ -304,15 +438,17 @@ sns.scatterplot(
     hue=latest.index.date,
     size="d30"
 )
+"""
 
 
-# In[33]:
+# In[224]:
 
 
 hourly_trends(latest, kind="mean")
 plt.figure()
-latest.loc["2020-05-29","Basal Rate (U/h)"].plot()
-plt.axhline(latest["Basal Rate (U/h)"].mean())
+debasal = latest.loc[str(dates[-2]),"Basal Rate (U/h)"]
+debasal.plot()
+plt.axhline(debasal.mean())
 
 
 # In[36]:

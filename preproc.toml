@@ -2,7 +2,7 @@
 # What to do.
 [tasks]
 sync = false
-debug = true
+debug = false
 preprocess = true   # I can't think of a scenario where this would be false.
 interpolate = true
 
@@ -10,7 +10,7 @@ interpolate = true
 [locations]
 source = "remote_data"          # Raw data, exported from medtronic's website.
 preprocessed = "data_test"      # Where to write processed data, without interpolation
-interpolated = "interpolated"   # Idem, but interpolated.
+interpolated = "biologs"        # Idem, but interpolated.
 history = ""                    # Name of the history file (.toml)
 
 # How to do the processing

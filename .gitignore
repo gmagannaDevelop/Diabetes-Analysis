@@ -12,3 +12,12 @@ interpolated/*
 remote_data/
 .DS_Store
 .*.swp
+preprocessed_old/
+biologs/
+data_test/
+dummy/
+old/
+preproc_lock.toml
+poetry.lock
+comparative_trial_data/
+mySugr_data

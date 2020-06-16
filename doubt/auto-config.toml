@@ -1,0 +1,17 @@
+[tasks]
+sync = false
+preprocess = true
+interpolate = true
+
+[locations]
+source = "tmp_data"
+preprocessed = "preprocessed"
+interpolated = "interpolated"
+
+[specs]
+interpolation = "full"
+
+[files]
+source = [ "tmp_data/CareLink-23-apr-2020-1-month.csv", "tmp_data/CareLink-Export-1584840806640.csv", "tmp_data/CareLink-Export-27-mar-3-month.csv", "tmp_data/CareLink-21-apr-2020-2-weeks.csv", "tmp_data/CareLink-26-apr-2020-3-month.csv", "tmp_data/CareLink-26-apr-2020-2-weeks.csv", "tmp_data/CareLink-Export-27-mar-1-month.csv", "tmp_data/CareLink-Export-1585353281010.csv", "tmp_data/CareLink-23-apr-2020-2-weeks.csv", "tmp_data/CareLink-Export-27-mar-15-dats.csv", "tmp_data/CareLink-19-apr-2020-1-month.csv", "tmp_data/Carekink-Export-15-apr-2020-3-month.csv", "tmp_data/CareLink-Export-15-apr-2020-15-days.csv", "tmp_data/CareLink-19-apr-2020-2-weeks.csv", "tmp_data/CareLink-Export-15-apr-2020-1-month.csv", "tmp_data/CareLink-19-apr-2020-3-months.csv", "tmp_data/CareLink-26-apr-2020-1-month.csv",]
+preprocessed = [ "preprocessed/CareLink-23-apr-2020-1-month.csv", "preprocessed/CareLink-Export-1584840806640.csv", "preprocessed/CareLink-Export-15-apr-2020-3-month.csv", "preprocessed/CareLink-Export-27-mar-3-month.csv", "preprocessed/CareLink-21-apr-2020-2-weeks.csv", "preprocessed/CareLink-26-apr-2020-3-month.csv", "preprocessed/CareLink-26-apr-2020-2-weeks.csv", "preprocessed/CareLink-Export-27-mar-1-month.csv", "preprocessed/CareLink-Export-1585353281010.csv", "preprocessed/CareLink-23-apr-2020-2-weeks.csv", "preprocessed/CareLink-Export-27-mar-15-dats.csv", "preprocessed/CareLink-Export-1584427177287.csv", "preprocessed/CareLink-19-apr-2020-1-month.csv", "preprocessed/Carekink-Export-15-apr-2020-3-month.csv", "preprocessed/CareLink-Export-15-apr-2020-15-days.csv", "preprocessed/CareLink-19-apr-2020-2-weeks.csv", "preprocessed/CareLink-Export-15-apr-2020-1-month.csv", "preprocessed/CareLink-19-apr-2020-3-months.csv", "preprocessed/CareLink-26-apr-2020-1-month.csv",]
+interpolated = []

@@ -10,14 +10,15 @@ interpolate = true
 [locations]
 source = "remote_data"          # Raw data, exported from medtronic's website.
 preprocessed = "data_test"      # Where to write processed data, without interpolation
-interpolated = "biologs"        # Idem, but interpolated.
+interpolated = "interpolated"   # Idem, but interpolated.
 history = ""                    # Name of the history file (.toml)
 
 # How to do the processing
 [specs]
 interpolation = "full"          # Either "full" or "daily"
 verbose = false
-ignore_lock = false
+ignore_lock = true
+write_lock = true
 diff_intervals = [15, 30, 60, 120] # to be deprecated.
 
 [interpolation.specs]
@@ -29,7 +30,7 @@ order = 2
 
 # Hardware optimisation
 [hardware]
-n_threads = 4 # I know my system has only 4 threads
+n_threads = 8 # I know my system has only 4 threads
 
 # File-specific specs (Carelink, FreeStyle, etc.)
 [file.specs]

@@ -93,7 +93,7 @@ def time_indexed_df(df1: pd.core.frame.DataFrame, columname: str) -> pd.core.fra
     return _tmp
 ##
 
-@time_log("logs/preprocessing.jsonl")
+#@time_log("logs/preprocessing.jsonl")
 def merge_on_duplicate_idx(
     df: pd.core.frame.DataFrame,
     mask: Any = np.nan,
@@ -118,7 +118,7 @@ def merge_on_duplicate_idx(
     return y
 ##
 
-@time_log("logs/preprocessing.jsonl")
+#@time_log("logs/preprocessing.jsonl")
 def hybrid_interpolator(
     data: pd.core.series.Series,
     mean: float = None,
@@ -283,7 +283,7 @@ def grep_idx(file_lines: List[str], the_string: str) -> List[int]:
     ide = [i for i, item in enumerate(file_lines) if item.startswith(the_string)]
     return ide
 
-@time_log("logs/preprocessing.jsonl")
+#@time_log("logs/preprocessing.jsonl")
 def preproc(config: objdict, file: str) -> NoReturn:
     """
         Congfig file
@@ -374,7 +374,8 @@ def preproc(config: objdict, file: str) -> NoReturn:
     y.to_csv(out_file)
 ##
 
-def main(config_file: str) -> NoReturn:
+@time_log("logs/preproc_main.jsonl")
+def main(config: objdict) -> NoReturn:
     """
     """
     global DEFAULT_LOCK_FILE
@@ -388,7 +389,6 @@ def main(config_file: str) -> NoReturn:
         })
         update_lock(DEFAULT_LOCK_FILE, history)
 
-    config = parse_config(config_file)
     #get_csv_files = lambda loc: [os.path.join(loc, x) for x in os.listdir(loc) if x[-4:] == ".csv"]
     get_csv_files = lambda loc: [x for x in os.listdir(loc) if x[-4:] == ".csv"]
 
@@ -408,9 +408,11 @@ def main(config_file: str) -> NoReturn:
         _preproc = partial(preproc, config)
         # DO NOT USE ASYNC UNTIL THE CODE IS WORKING
         if config.tasks.debug:
+            print("\n\nDEBUG ON : Sequential processing")
             for file in files_to_process:
                 _preproc(file)
         else:
+            print(f"\n\nParallel processing using {config.hardware.n_threads} threads ...")
             with futures.ThreadPoolExecutor(max_workers=config.hardware.n_threads) as pool:
                 pool.map(_preproc, files_to_process)
         #list(map(_preproc, files_to_process))
@@ -418,7 +420,8 @@ def main(config_file: str) -> NoReturn:
         # say that we've preprocessed the specified files
         history.files.processed += files_to_process
         history.files.processed = list(set(history.files.processed))
-        update_lock(DEFAULT_LOCK_FILE, history)
+        if config.specs.write_lock:
+            update_lock(DEFAULT_LOCK_FILE, history)
     else:
         print("No files to process, please verify the following :")
         print(f" CONFIG : {config_file} ")
@@ -438,14 +441,16 @@ if __name__ == "__main__":
     if len(sys.argv) != 2:
         if DEFAULT_CONFIG_FILE in os.listdir("."):
             print(f"Config file not specified, using default `{DEFAULT_CONFIG_FILE}`")
-            main(DEFAULT_CONFIG_FILE)
+            config = parse_config(DEFAULT_CONFIG_FILE)
+            main(config)
         else:
             print(f"Config file not specified, using default `{DEFAULT_CONFIG_FILE}`...")
             print(f"Default `{DEFAULT_CONFIG_FILE}` not found in {os.path.abspath('.')}")
             exit_explain_usage()
     else:
         if "toml" in sys.argv[1]:
-            main(sys.argv[1])
+            config = parse_config(sys.argv[1])
+            main(config)
         else:
             exit_explain_usage()
 ##

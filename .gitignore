@@ -21,3 +21,4 @@ preproc_lock.toml
 poetry.lock
 comparative_trial_data/
 mySugr_data
+creds/

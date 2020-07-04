@@ -17,7 +17,7 @@ history = ""                    # Name of the history file (.toml)
 [specs]
 interpolation = "full"          # Either "full" or "daily"
 verbose = false
-ignore_lock = true
+ignore_lock = false
 write_lock = true
 diff_intervals = [15, 30, 60, 120] # to be deprecated.
 

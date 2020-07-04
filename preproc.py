@@ -282,6 +282,13 @@ def grep_idx(file_lines: List[str], the_string: str) -> List[int]:
 
     ide = [i for i, item in enumerate(file_lines) if item.startswith(the_string)]
     return ide
+##
+
+def rename_files_sync():
+    """
+    """
+##
+
 
 #@time_log("logs/preprocessing.jsonl")
 def preproc(config: objdict, file: str) -> NoReturn:

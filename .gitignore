@@ -4,6 +4,7 @@ credentials.json
 token.pickle
 Errors.log
 __pycache__/*
+__pycache__
 logs/
 preprocessed/*
 tmp_data/*
@@ -22,3 +23,4 @@ poetry.lock
 comparative_trial_data/
 mySugr_data
 creds/
+oud.interpolated/

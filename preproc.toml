@@ -5,12 +5,14 @@ sync = false
 debug = false
 preprocess = true   # I can't think of a scenario where this would be false.
 interpolate = true
+interpolate_isig = true # Should default to false 
+differentiate = true # Add first finite differences 
 
 # Directories to read from / write to.
 [locations]
 source = "remote_data"          # Raw data, exported from medtronic's website.
-preprocessed = "data_test"      # Where to write processed data, without interpolation
-interpolated = "interpolated"   # Idem, but interpolated.
+preprocessed = "processed"      # Where to write processed data, without interpolation
+interpolated = "interpolated"        # Idem, but interpolated.
 history = ""                    # Name of the history file (.toml)
 
 # How to do the processing
@@ -18,19 +20,22 @@ history = ""                    # Name of the history file (.toml)
 interpolation = "full"          # Either "full" or "daily"
 verbose = false
 ignore_lock = false
-write_lock = true
 diff_intervals = [15, 30, 60, 120] # to be deprecated.
 
 [interpolation.specs]
 methods = { linear = 0.65, akima = 0.25, polynomial = 0.10 }
 direction = "both"
-limit = 60
+limit = 120
 limit_area = "inside"
 order = 2
 
+[differentiation.specs]
+delta = 1
+window_size = 5
+
 # Hardware optimisation
 [hardware]
-n_threads = 8 # I know my system has only 4 threads
+n_threads = 12
 
 # File-specific specs (Carelink, FreeStyle, etc.)
 [file.specs]
@@ -40,3 +45,4 @@ time = "Time"
 header_row_num = 7
 dummy_index = "Index"
 glycaemia_column = "Sensor Glucose (mg/dL)"
+isig_column = "ISIG Value"

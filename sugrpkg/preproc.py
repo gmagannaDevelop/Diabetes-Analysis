@@ -26,8 +26,8 @@ import datetime as dt
 from typing import List, Dict, NoReturn, Any, Callable, Union, Optional
 
 # Local imports
-from decorators import time_log, time_this
-from customobjs import objdict
+from .decorators import time_log, time_this
+from .customobjs import objdict
 ################################################################################
 
 
@@ -93,13 +93,20 @@ def time_indexed_df(df1: pd.core.frame.DataFrame, columname: str) -> pd.core.fra
     return _tmp
 ##
 
-#@time_log("logs/preprocessing.jsonl")
+@time_log("logs/preprocessing.jsonl")
 def merge_on_duplicate_idx(
     df: pd.core.frame.DataFrame,
     mask: Any = np.nan,
     verbose: bool = False
 ) -> pd.core.frame.DataFrame:
     """
+        Create a pruned version of
+        a dataframe containing duplicate rows,
+        keeping those which are not np.nan
+        This can be changed by giving a different mask.
+
+        y = y.mask( y == mask ).groupby(level=0).first()
+
     """
 
     y = df.copy()
@@ -114,11 +121,15 @@ def merge_on_duplicate_idx(
         print(f" Duplicate indices :\t\t\t{duplicate_idx.shape[0]}")
         print(f" Total duplicate rows :\t\t\t{duplicate_rows}")
         print(f" Rows on pruned dataframe :\t\t{new_rows}")
+        if input("Show duplicate rows ?[y/n]") == "y":
+            for idx in duplicate_idx:
+                print(f"Old : \n{df[str(idx)]}\n")
+                print(f"New : \n{y[str(idx)]}\n")
 
     return y
 ##
 
-#@time_log("logs/preprocessing.jsonl")
+@time_log("logs/preprocessing.jsonl")
 def hybrid_interpolator(
     data: pd.core.series.Series,
     mean: float = None,
@@ -149,8 +160,6 @@ def hybrid_interpolator(
     ( (mean - limit), (mean + limit) )
     it will be replaced by the linear interpolation approximation.
 
-    If not set, mean and limit will default to:
-        mean = data.mean()
         limit = 2 * data.std()
 
     This function should have support for keyword arguments, but is yet to be implemented.
@@ -253,7 +262,8 @@ def compute_time_periodicity(df: pd.DataFrame) -> NoReturn:
 
 def import_csv(
     filename: str,
-    column: Optional[str] = None
+    column: Optional[str] = None,
+    low_memory: bool = False
 ) -> pd.DataFrame:
     """
         Import a csv file previously generated with this same script.
@@ -265,7 +275,7 @@ def import_csv(
     """
 
     column = column or "DateTime"
-    _x = pd.read_csv(filename)
+    _x = pd.read_csv(filename, low_memory=low_memory)
     _y = time_indexed_df(_x, column)
 
     return _y
@@ -282,15 +292,8 @@ def grep_idx(file_lines: List[str], the_string: str) -> List[int]:
 
     ide = [i for i, item in enumerate(file_lines) if item.startswith(the_string)]
     return ide
-##
 
-def rename_files_sync():
-    """
-    """
-##
-
-
-#@time_log("logs/preprocessing.jsonl")
+@time_log("logs/preprocessing.jsonl")
 def preproc(config: objdict, file: str) -> NoReturn:
     """
         Congfig file
@@ -355,6 +358,12 @@ def preproc(config: objdict, file: str) -> NoReturn:
             y[config.file.specs.glycaemia_column],
             **config.interpolation.specs
         )
+    if config.tasks.interpolate_isig:
+        y[config.file.specs.isig_column] = new_hybrid_interpolator(
+            y[config.file.specs.isig_column],
+            **config.interpolation.specs
+        )
+
         # Deltas within valuable intervals :
         """
         for i in config.specs.diff_intervals:
@@ -370,7 +379,17 @@ def preproc(config: objdict, file: str) -> NoReturn:
 
     get_date = lambda x: x.split(" ")[0].replace("/", "-")
     _st, _end = map(get_date, [_fi['Start Date'], _fi['End Date']])
-    out_file = f"{_fi['MiniMed 640G']}_{_fi['Last Name']}_{_fi['First Name']}_({_st})_({_end})"
+    reverse_date = lambda x: "-".join(list(reversed(x.split("-")))) 
+    uniform_date = lambda x: f"0{int(x)}" if int(x) < 10 else x
+    _st, _end = map(reverse_date, [_st, _end])
+    uniform_dates = lambda y: "-".join(map(uniform_date, y.split("-")))
+    _st, _end = map(uniform_dates, [_st, _end])
+    out_file = [
+        f"{_fi['MiniMed 640G']}", f"{_fi['Last Name']}",
+        f"{_fi['First Name']}", 
+        f"(til:{_end})", f"(from:{_st})"
+    ]
+    out_file = "_".join(out_file)
     if config.tasks.interpolate:
         out_file += "_interpolated.csv"
         out_file = os.path.join(config.locations.interpolated, out_file)
@@ -381,8 +400,7 @@ def preproc(config: objdict, file: str) -> NoReturn:
     y.to_csv(out_file)
 ##
 
-@time_log("logs/preproc_main.jsonl")
-def main(config: objdict) -> NoReturn:
+def main(config_file: str) -> NoReturn:
     """
     """
     global DEFAULT_LOCK_FILE
@@ -396,6 +414,7 @@ def main(config: objdict) -> NoReturn:
         })
         update_lock(DEFAULT_LOCK_FILE, history)
 
+    config = parse_config(config_file)
     #get_csv_files = lambda loc: [os.path.join(loc, x) for x in os.listdir(loc) if x[-4:] == ".csv"]
     get_csv_files = lambda loc: [x for x in os.listdir(loc) if x[-4:] == ".csv"]
 
@@ -415,11 +434,9 @@ def main(config: objdict) -> NoReturn:
         _preproc = partial(preproc, config)
         # DO NOT USE ASYNC UNTIL THE CODE IS WORKING
         if config.tasks.debug:
-            print("\n\nDEBUG ON : Sequential processing")
             for file in files_to_process:
                 _preproc(file)
         else:
-            print(f"\n\nParallel processing using {config.hardware.n_threads} threads ...")
             with futures.ThreadPoolExecutor(max_workers=config.hardware.n_threads) as pool:
                 pool.map(_preproc, files_to_process)
         #list(map(_preproc, files_to_process))
@@ -427,8 +444,7 @@ def main(config: objdict) -> NoReturn:
         # say that we've preprocessed the specified files
         history.files.processed += files_to_process
         history.files.processed = list(set(history.files.processed))
-        if config.specs.write_lock:
-            update_lock(DEFAULT_LOCK_FILE, history)
+        update_lock(DEFAULT_LOCK_FILE, history)
     else:
         print("No files to process, please verify the following :")
         print(f" CONFIG : {config_file} ")
@@ -448,16 +464,14 @@ if __name__ == "__main__":
     if len(sys.argv) != 2:
         if DEFAULT_CONFIG_FILE in os.listdir("."):
             print(f"Config file not specified, using default `{DEFAULT_CONFIG_FILE}`")
-            config = parse_config(DEFAULT_CONFIG_FILE)
-            main(config)
+            main(DEFAULT_CONFIG_FILE)
         else:
             print(f"Config file not specified, using default `{DEFAULT_CONFIG_FILE}`...")
             print(f"Default `{DEFAULT_CONFIG_FILE}` not found in {os.path.abspath('.')}")
             exit_explain_usage()
     else:
         if "toml" in sys.argv[1]:
-            config = parse_config(sys.argv[1])
-            main(config)
+            main(sys.argv[1])
         else:
             exit_explain_usage()
 ##

@@ -1,5 +1,7 @@
 .ipynb_checkpoints/*
 data/*
+biologs_data
+remote_data
 credentials.json
 token.pickle
 Errors.log
@@ -19,7 +21,6 @@ data_test/
 dummy/
 old/
 preproc_lock.toml
-poetry.lock
 comparative_trial_data/
 mySugr_data
 creds/

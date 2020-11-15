@@ -149,8 +149,6 @@ def hybrid_interpolator(
     ( (mean - limit), (mean + limit) )
     it will be replaced by the linear interpolation approximation.
 
-    If not set, mean and limit will default to:
-        mean = data.mean()
         limit = 2 * data.std()
 
     This function should have support for keyword arguments, but is yet to be implemented.
@@ -253,7 +251,8 @@ def compute_time_periodicity(df: pd.DataFrame) -> NoReturn:
 
 def import_csv(
     filename: str,
-    column: Optional[str] = None
+    column: Optional[str] = None,
+    low_memory: bool = False
 ) -> pd.DataFrame:
     """
         Import a csv file previously generated with this same script.
@@ -265,7 +264,7 @@ def import_csv(
     """
 
     column = column or "DateTime"
-    _x = pd.read_csv(filename)
+    _x = pd.read_csv(filename, low_memory=low_memory)
     _y = time_indexed_df(_x, column)
 
     return _y
@@ -348,12 +347,19 @@ def preproc(config: objdict, file: str) -> NoReturn:
             y[config.file.specs.glycaemia_column],
             **config.interpolation.specs
         )
-        # Deltas within valuable intervals :
-        """
-        for i in config.specs.diff_intervals:
-            y[f'd{i}'] = y['Sensor Glucose (mg/dL)'].diff(i)
-            y[f'd{i}d2'] = y[f'd{i}'].diff(2)
-        """
+        # Only differentiate if we have interpolated, the definition won't be valid
+        # as we need a constant, evenly-spaced temporal grid.
+        if config.tasks.differentiate:
+            _d = config.differentiation.specs.delta
+            _w = config.differentiation.specs.window_size
+            y[f"d{_d}w{_w}"] = y[config.file.specs.glycaemia_column].diff(_d).rolling(_w).median()
+            y[f"Sd{_d}w{_w}"] = y[config.file.specs.glycaemia_column].diff(_d).rolling(_w).sum()
+
+    if config.tasks.interpolate_isig:
+        y[config.file.specs.isig_column] = new_hybrid_interpolator(
+            y[config.file.specs.isig_column],
+            **config.interpolation.specs
+        )
 
     periodicity_df = compute_time_periodicity(y)
     y = y.join(periodicity_df)
@@ -363,7 +369,17 @@ def preproc(config: objdict, file: str) -> NoReturn:
 
     get_date = lambda x: x.split(" ")[0].replace("/", "-")
     _st, _end = map(get_date, [_fi['Start Date'], _fi['End Date']])
-    out_file = f"{_fi['MiniMed 640G']}_{_fi['Last Name']}_{_fi['First Name']}_({_st})_({_end})"
+    reverse_date = lambda x: "-".join(list(reversed(x.split("-")))) 
+    uniform_date = lambda x: f"0{int(x)}" if int(x) < 10 else x
+    _st, _end = map(reverse_date, [_st, _end])
+    uniform_dates = lambda y: "-".join(map(uniform_date, y.split("-")))
+    _st, _end = map(uniform_dates, [_st, _end])
+    out_file = [
+        f"{_fi['MiniMed 640G']}", f"{_fi['Last Name']}",
+        f"{_fi['First Name']}", 
+        f"(til:{_end})", f"(from:{_st})"
+    ]
+    out_file = "_".join(out_file)
     if config.tasks.interpolate:
         out_file += "_interpolated.csv"
         out_file = os.path.join(config.locations.interpolated, out_file)

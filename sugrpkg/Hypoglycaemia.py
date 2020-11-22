@@ -35,22 +35,24 @@ from customobjs import objdict
 # In[6]:
 
 
-get_ipython().run_line_magic('matplotlib', 'inline')
-plt.style.use('seaborn')
-plt.rcParams['figure.figsize'] = (15, 8)
+get_ipython().run_line_magic("matplotlib", "inline")
+plt.style.use("seaborn")
+plt.rcParams["figure.figsize"] = (15, 8)
 
 
 # In[3]:
 
 
-y = import_csv("interpolated/NG1988812H_Maganna_Gustavo_(27-05-20)_(9-06-20)_interpolated.csv")
+y = import_csv(
+    "interpolated/NG1988812H_Maganna_Gustavo_(27-05-20)_(9-06-20)_interpolated.csv"
+)
 
 
 # In[4]:
 
 
-keyword = 'SUSPEND BEFORE LOW'
-alarms  = []
+keyword = "SUSPEND BEFORE LOW"
+alarms = []
 for i in y.Alarm.dropna().unique().tolist():
     if keyword in i:
         alarms.append(i)
@@ -70,27 +72,29 @@ print(f"Number of days in data : {len(dates)}")
 
 n_month = 30
 n_latest = 4
-#month = data.loc[dates[len(dates) - n_month]:dates[-1], :] if n_month < n_total else None
-latest = y.loc[dates[len(dates)- n_latest]:dates[-1], :] if n_latest < n_total else None
-lday = y.loc[dates[len(dates)- 1]:dates[-1], :] if n_latest < n_total else None
+# month = data.loc[dates[len(dates) - n_month]:dates[-1], :] if n_month < n_total else None
+latest = (
+    y.loc[dates[len(dates) - n_latest] : dates[-1], :] if n_latest < n_total else None
+)
+lday = y.loc[dates[len(dates) - 1] : dates[-1], :] if n_latest < n_total else None
 
 
 # In[12]:
 
 
-latest[ latest.Alarm == 'SUSPEND BEFORE LOW ALARM, QUIET' ].hour.hist()
+latest[latest.Alarm == "SUSPEND BEFORE LOW ALARM, QUIET"].hour.hist()
 
 
 # In[16]:
 
 
-latest.loc[str(dates[-2]), "Basal Rate (U/h)"] .plot()
+latest.loc[str(dates[-2]), "Basal Rate (U/h)"].plot()
 
 
 # In[22]:
 
 
-latest[latest.hour==22]["Basal Rate (U/h)"].describe()
+latest[latest.hour == 22]["Basal Rate (U/h)"].describe()
 
 
 # In[13]:
@@ -100,7 +104,3 @@ latest.columns
 
 
 # In[ ]:
-
-
-
-

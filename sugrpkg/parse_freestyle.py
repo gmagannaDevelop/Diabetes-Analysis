@@ -26,6 +26,7 @@ import seaborn as sns
 
 from preproc import time_indexed_df, new_hybrid_interpolator, merge_on_duplicate_idx
 from customobjs import objdict
+
 help(time_indexed_df)
 
 
@@ -39,18 +40,19 @@ styles = plt.style.available
 # In[4]:
 
 
-get_ipython().run_line_magic('matplotlib', 'inline')
-plt.style.use('seaborn')
-plt.rcParams['figure.figsize'] = (15, 8)
+get_ipython().run_line_magic("matplotlib", "inline")
+plt.style.use("seaborn")
+plt.rcParams["figure.figsize"] = (15, 8)
 
 
 # In[8]:
 
 
 x = pd.read_csv(
-    "comparative_trial_data/fml.txt", 
-    sep="\t", index_col="Time", parse_dates=["Time"],
-    
+    "comparative_trial_data/fml.txt",
+    sep="\t",
+    index_col="Time",
+    parse_dates=["Time"],
 ).drop(["ID"], axis="columns")
 x = x.sort_index()
 x.index[0], x.index[-1]
@@ -99,8 +101,10 @@ config.interpolation.specs.limit = 300
 # In[59]:
 
 
-new_hybrid_interpolator(x[start:end][col].resample("1T").asfreq(), **config.interpolation.specs)    .plot(label="interpolated")
-x[start:end][col]    .plot(label="original")
+new_hybrid_interpolator(
+    x[start:end][col].resample("1T").asfreq(), **config.interpolation.specs
+).plot(label="interpolated")
+x[start:end][col].plot(label="original")
 plt.legend()
 
 
@@ -108,7 +112,7 @@ plt.legend()
 
 
 y = x.resample("1T").asfreq()
-y[col] = new_hybrid_interpolator(y[col],**config.interpolation.specs)
+y[col] = new_hybrid_interpolator(y[col], **config.interpolation.specs)
 
 
 # In[61]:
@@ -120,9 +124,6 @@ sns.distplot(x["Historic Glucose (mg/dL)"])
 # In[35]:
 
 
-
-
-
 # In[18]:
 
 
@@ -130,7 +131,3 @@ help(pd.DataFrame.drop)
 
 
 # In[ ]:
-
-
-
-

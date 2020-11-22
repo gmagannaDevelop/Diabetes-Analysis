@@ -33,7 +33,3 @@ from customobjs import objdict
 
 
 # In[ ]:
-
-
-
-

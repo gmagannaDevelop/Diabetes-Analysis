@@ -4,7 +4,6 @@
 # In[8]:
 
 
-
 # Annotations :
 from typing import List, Dict, Callable, NoReturn, Any, Optional
 
@@ -16,14 +15,14 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-# Local : 
+# Local :
 from preproc import time_indexed_df, import_csv
 from Utils import comparative_hba1c_plot, proportions_visualiser, dist_plot
 
-# Debugging only, remove after building : 
-get_ipython().run_line_magic('matplotlib', 'inline')
-plt.style.use('seaborn')
-plt.rcParams['figure.figsize'] = (15, 8)
+# Debugging only, remove after building :
+get_ipython().run_line_magic("matplotlib", "inline")
+plt.style.use("seaborn")
+plt.rcParams["figure.figsize"] = (15, 8)
 
 
 # In[9]:
@@ -43,10 +42,10 @@ data.columns
 
 
 # Date-time indexing :
-x = data.copy() 
-x["DateTime"] =  x["Date"] + " " + x["Time"]
+x = data.copy()
+x["DateTime"] = x["Date"] + " " + x["Time"]
 x.drop(["Date", "Time"], axis=1, inplace=True)
-y = time_indexed_df(x, 'DateTime')
+y = time_indexed_df(x, "DateTime")
 y.index = y.index.map(lambda t: t.replace(second=0))
 
 
@@ -66,7 +65,7 @@ comparative_hba1c_plot(real, colum_name=real.columns[1])
 # In[6]:
 
 
-proportions_visualiser(real, colum_name=real.columns[1], kind='tar')
+proportions_visualiser(real, colum_name=real.columns[1], kind="tar")
 
 
 # In[7]:
@@ -82,7 +81,3 @@ dist_plot(cgm_data["Sensor Glucose (mg/dL)"])
 
 
 # In[ ]:
-
-
-
-

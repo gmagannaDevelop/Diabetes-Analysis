@@ -35,160 +35,192 @@ from customobjs import objdict
 # In[192]:
 
 
-def dist_plot(series: pd.core.series.Series, dropna: bool = True, sig: Optional[int] = None) -> NoReturn:
+def dist_plot(
+    series: pd.core.series.Series, dropna: bool = True, sig: Optional[int] = None
+) -> NoReturn:
     """
-        Given a pandas Series, generate a descriptive visualisation 
-        with a boxplot and a histogram with a kde.
-        By default, this function drops `nan` values. If you desire to
-        handle them differently, you should do so beforehand and/or
-        specify dropna=False.
+    Given a pandas Series, generate a descriptive visualisation
+    with a boxplot and a histogram with a kde.
+    By default, this function drops `nan` values. If you desire to
+    handle them differently, you should do so beforehand and/or
+    specify dropna=False.
     """
-    
+
     if dropna:
         series = series.dropna()
     sig = sig or 0
-    
-    
+
     quarts = scipy.stats.mstats.mquantiles(series, [0.001, 0.25, 0.5, 0.75, 0.975])
-    
-    f, (ax_box, ax_hist) = plt.subplots(2, sharex=True, gridspec_kw={"height_ratios": (.25, .75)})
+
+    f, (ax_box, ax_hist) = plt.subplots(
+        2, sharex=True, gridspec_kw={"height_ratios": (0.25, 0.75)}
+    )
     sns.boxplot(series, ax=ax_box)
     sns.stripplot(series, color="orange", jitter=0.2, size=2.5, ax=ax_box)
     sns.distplot(series, ax=ax_hist, kde=True)
     ax_hist.axvline(series.mean())
     ax_hist.set_xticks(quarts)
-    #ax_box.set(xlabel=f'Mean value : {int(series.mean())}')
-    plt.title(f"Glycaemic Distribution μ = {round(series.mean(), sig)}, σ = {round(series.std(), sig)}")
+    # ax_box.set(xlabel=f'Mean value : {int(series.mean())}')
+    plt.title(
+        f"Glycaemic Distribution μ = {round(series.mean(), sig)}, σ = {round(series.std(), sig)}"
+    )
+
+
 ##
+
 
 def comparative_hba1c_plot(
     df: pd.core.frame.DataFrame,
     colum_name: str = "Sensor Glucose (mg/dL)",
     hba1c: Callable = lambda x: (x + 105) / 36.5,
-    windows: Dict[str,int] = {
-        "weekly": 7,
-        "monthly": 30
-    },
-    kind: str = "mean"
+    windows: Dict[str, int] = {"weekly": 7, "monthly": 30},
+    kind: str = "mean",
 ) -> NoReturn:
-    """ 
-    """
-    
+    """"""
+
     glc_to_hba1c = lambda x: (x + 105) / 36.5
-    hba1c_to_glc = lambda x: x*36.5 - 105 
+    hba1c_to_glc = lambda x: x * 36.5 - 105
     valid_kinds = ["mean", "std", "var", "median"]
-    
+
     if kind in valid_kinds:
-        df.groupby(df.index.date)[colum_name].            apply(eval(f"pd.Series.{kind}")).apply(hba1c).                plot(**{"label":"daily"})
-                
+        df.groupby(df.index.date)[colum_name].apply(eval(f"pd.Series.{kind}")).apply(
+            hba1c
+        ).plot(**{"label": "daily"})
+
         for key, value in windows.items():
-            ax = df.groupby(df.index.date)[colum_name].                    apply(eval(f"pd.Series.{kind}")).rolling(value).mean().                            apply(hba1c).plot(**{"label":key})
-    
+            ax = (
+                df.groupby(df.index.date)[colum_name]
+                .apply(eval(f"pd.Series.{kind}"))
+                .rolling(value)
+                .mean()
+                .apply(hba1c)
+                .plot(**{"label": key})
+            )
+
         ax.set_ylabel("HbA1c %")
         mean_hba1c = glc_to_hba1c(eval(f"df[colum_name].{kind}()"))
-        secax = ax.secondary_yaxis('right', functions=(hba1c_to_glc, glc_to_hba1c))
-        secax.set_ylabel('mg/dL')
-        plt.axhline(mean_hba1c, **{"label": f"mean = {round(mean_hba1c,1)}", "c": "blue"})
+        secax = ax.secondary_yaxis("right", functions=(hba1c_to_glc, glc_to_hba1c))
+        secax.set_ylabel("mg/dL")
+        plt.axhline(
+            mean_hba1c, **{"label": f"mean = {round(mean_hba1c,1)}", "c": "blue"}
+        )
         plt.legend()
         plt.title(f"Average {kind} of {colum_name}")
     else:
         raise Exception(f"kind should be one of {valid_kinds}")
+
+
 ##
+
 
 def proportions_visualiser(
     df: pd.core.frame.DataFrame,
     colum_name: str = "Sensor Glucose (mg/dL)",
-    limits: Dict[str,int] = {
-        "low": 70,
-        "high": 180
-    },
-    windows: Dict[str,int] = {
-        "weekly": 7,
-        "monthly": 30
-    },
-    kind: str = "TIR"
+    limits: Dict[str, int] = {"low": 70, "high": 180},
+    windows: Dict[str, int] = {"weekly": 7, "monthly": 30},
+    kind: str = "TIR",
 ) -> NoReturn:
     """
-        Wuhuuuu
+    Wuhuuuu
     """
-    
+
     valid_kinds = ["TIR", "TBR", "TAR"]
     titles = {
         "TIR": f"Time In Range [{limits['low']},{limits['high']})",
         "TAR": f"Time Above Range >= {limits['high']}",
-        "TBR": f"Time Below Range < {limits['low']}"
+        "TBR": f"Time Below Range < {limits['low']}",
     }
-    
+
     kind = kind.upper()
-    
+
     if kind not in valid_kinds:
         raise Exception(f"Invalid kind `{kind}`, select one from {valid_kinds}")
-    
-    TIR = lambda y: 100 * y[ (y >= limits["low"]) & (y < limits["high"]) ].count() / y.count()
-    TBR = lambda y: 100 * y[ (y < limits["low"]) ].count() / y.count()
-    TAR = lambda y: 100 * y[ (y >= limits["high"]) ].count() / y.count()
-    
-    _proportions = df["Sensor Glucose (mg/dL)"].groupby(data.index.date).apply(eval(f"{kind}"))
-    
+
+    TIR = (
+        lambda y: 100
+        * y[(y >= limits["low"]) & (y < limits["high"])].count()
+        / y.count()
+    )
+    TBR = lambda y: 100 * y[(y < limits["low"])].count() / y.count()
+    TAR = lambda y: 100 * y[(y >= limits["high"])].count() / y.count()
+
+    _proportions = (
+        df["Sensor Glucose (mg/dL)"].groupby(data.index.date).apply(eval(f"{kind}"))
+    )
+
     _proportions.plot(**{"label": "daily"})
-    
+
     for key, value in windows.items():
-        _ax = _proportions.rolling(value).mean().plot(**{"label":key})
-    
+        _ax = _proportions.rolling(value).mean().plot(**{"label": key})
+
     _mean_proportion = _proportions.mean()
     plt.ylabel("Percentage")
-    plt.axhline(_mean_proportion, **{"label": f"mean = {round(_mean_proportion,1)}", "c": "blue"})
+    plt.axhline(
+        _mean_proportion,
+        **{"label": f"mean = {round(_mean_proportion,1)}", "c": "blue"},
+    )
     plt.legend()
     plt.title(titles[kind])
-##    
 
-def nonull_indices(
-    df: pd.DataFrame,
-    column: str
-) -> pd.core.indexes.datetimes.DatetimeIndex:
-    """
-    """  
-    _nonull = df[column].dropna()
-    _nonull = _nonull[ _nonull > 0 ]
-    return _nonull.index
+
 ##
 
-def bolus_indices(
-    df: pd.DataFrame, 
-    columns: Optional[List[str]] = None
+
+def nonull_indices(
+    df: pd.DataFrame, column: str
 ) -> pd.core.indexes.datetimes.DatetimeIndex:
-    """
-    """
-    
-    columns = columns or ["BWZ Correction Estimate (U)",  "BWZ Carb Input (grams)"]
+    """"""
+    _nonull = df[column].dropna()
+    _nonull = _nonull[_nonull > 0]
+    return _nonull.index
+
+
+##
+
+
+def bolus_indices(
+    df: pd.DataFrame, columns: Optional[List[str]] = None
+) -> pd.core.indexes.datetimes.DatetimeIndex:
+    """"""
+
+    columns = columns or ["BWZ Correction Estimate (U)", "BWZ Carb Input (grams)"]
     _nonull = partial(nonull_indices, df)
     indices_ls = list(map(_nonull, columns))
     return reduce(lambda x, y: x.union(y), indices_ls)
+
+
 ##
 
 
-def basal_only(df: pd.DataFrame, column: str = "Sensor Glucose (mg/dL)") -> pd.DataFrame:
-    """
-    """
+def basal_only(
+    df: pd.DataFrame, column: str = "Sensor Glucose (mg/dL)"
+) -> pd.DataFrame:
+    """"""
     basal = df.copy()
     for uid in bolus_indices(basal):
-        real = uid+dt.timedelta(hours=2, minutes=30)
-        closest = df.index[df.index.searchsorted(real) - 1]  # Otherwise it goes out of bounds !
+        real = uid + dt.timedelta(hours=2, minutes=30)
+        closest = df.index[
+            df.index.searchsorted(real) - 1
+        ]  # Otherwise it goes out of bounds !
         basal.loc[uid:closest, column] = np.nan
     return basal
+
+
 ##
 
-def hourly_trends(df: pd.DataFrame, kind: str = "mean", deltas: Optional[List[int]] = None) -> NoReturn:
-    """
-    """
+
+def hourly_trends(
+    df: pd.DataFrame, kind: str = "mean", deltas: Optional[List[int]] = None
+) -> NoReturn:
+    """"""
     valid_kinds = ["mean", "std", "var", "median"]
     deltas = deltas or [15, 30, 60, 120]
-    
+
     if kind in valid_kinds:
         figs = [
-            df.groupby(df.index.hour)[f'd{i}']\
-                .apply(eval(f"np.{kind}"))\
-                    .plot(label=f"{i} ") 
+            df.groupby(df.index.hour)[f"d{i}"]
+            .apply(eval(f"np.{kind}"))
+            .plot(label=f"{i} ")
             for i in deltas
         ]
         figs[-1].legend()
@@ -197,27 +229,31 @@ def hourly_trends(df: pd.DataFrame, kind: str = "mean", deltas: Optional[List[in
         plt.ylabel("mg/dl")
     else:
         raise Exception(f"Invalid kind, select one from {valid_kinds}")
-##        
+
+
+##
 
 
 # In[3]:
 
 
-get_ipython().run_line_magic('matplotlib', 'inline')
-plt.style.use('seaborn')
-plt.rcParams['figure.figsize'] = (15, 8)
+get_ipython().run_line_magic("matplotlib", "inline")
+plt.style.use("seaborn")
+plt.rcParams["figure.figsize"] = (15, 8)
 
 
 # In[11]:
 
 
-get_ipython().system('ls interpolated/ | grep 05-20 | grep 9-06')
+get_ipython().system("ls interpolated/ | grep 05-20 | grep 9-06")
 
 
 # In[151]:
 
 
-data = import_csv("interpolated/NG1988812H_Maganna_Gustavo_(27-05-20)_(9-06-20)_interpolated.csv")
+data = import_csv(
+    "interpolated/NG1988812H_Maganna_Gustavo_(27-05-20)_(9-06-20)_interpolated.csv"
+)
 
 
 # In[68]:
@@ -238,26 +274,31 @@ woo
 
 
 def compute_time_periodicity(df: pd.DataFrame) -> NoReturn:
-    """
-    """
+    """"""
     # Coulmns to capture daily periodicity :
     T = 1439
-    min_res_t_series = pd.Series(df.index.hour*60 + df.index.minute)
-    _tmp = pd.DataFrame({
-        'hour': df.index.hour,
-        'minute': min_res_t_series,
-        'x(t)': min_res_t_series.apply(lambda x: np.cos(2*np.pi*x / T)),
-        'y(t)': min_res_t_series.apply(lambda x: np.sin(2*np.pi*x / T))
-    })
+    min_res_t_series = pd.Series(df.index.hour * 60 + df.index.minute)
+    _tmp = pd.DataFrame(
+        {
+            "hour": df.index.hour,
+            "minute": min_res_t_series,
+            "x(t)": min_res_t_series.apply(lambda x: np.cos(2 * np.pi * x / T)),
+            "y(t)": min_res_t_series.apply(lambda x: np.sin(2 * np.pi * x / T)),
+        }
+    )
     _tmp.index = df.index
     return _tmp
+
+
 ##
 
 
 # In[170]:
 
 
-pd.Series(data.index.hour*60 + data.index.minute).apply(lambda x: np.sin(2*np.pi*x / 1439))
+pd.Series(data.index.hour * 60 + data.index.minute).apply(
+    lambda x: np.sin(2 * np.pi * x / 1439)
+)
 
 
 # In[187]:
@@ -277,7 +318,7 @@ data
 # In[150]:
 
 
-#pd.concat([data, compute_time_periodicity(data)], axis="columns")
+# pd.concat([data, compute_time_periodicity(data)], axis="columns")
 
 
 # In[195]:
@@ -290,7 +331,7 @@ for i in deltas:
 # In[196]:
 
 
-data  = data.join(woo)
+data = data.join(woo)
 
 
 # In[163]:
@@ -327,7 +368,7 @@ comparative_hba1c_plot(data, kind="mean")
 # In[18]:
 
 
-comparative_hba1c_plot(data, kind='std')
+comparative_hba1c_plot(data, kind="std")
 
 
 # In[19]:
@@ -360,7 +401,7 @@ config.interpolation.specs
 # In[61]:
 
 
-# Visualise changes : 
+# Visualise changes :
 """
 new_hybrid_interpolator(export["Sensor Glucose (mg/dL)"], **config.interpolation.specs).plot(label="interpolated")
 export["Sensor Glucose (mg/dL)"].plot(label="original")
@@ -400,15 +441,19 @@ print(f"Number of days in data : {len(dates)}")
 
 n_month = 30
 n_latest = 4
-#month = data.loc[dates[len(dates) - n_month]:dates[-1], :] if n_month < n_total else None
-latest = data.loc[dates[len(dates)- n_latest]:dates[-1], :] if n_latest < n_total else None
-lday = data.loc[dates[len(dates)- 1]:dates[-1], :] if n_latest < n_total else None
+# month = data.loc[dates[len(dates) - n_month]:dates[-1], :] if n_month < n_total else None
+latest = (
+    data.loc[dates[len(dates) - n_latest] : dates[-1], :]
+    if n_latest < n_total
+    else None
+)
+lday = data.loc[dates[len(dates) - 1] : dates[-1], :] if n_latest < n_total else None
 
 
 # In[207]:
 
 
-#comparative_hba1c_plot(month)
+# comparative_hba1c_plot(month)
 plt.figure()
 comparative_hba1c_plot(latest)
 
@@ -422,8 +467,8 @@ comparative_hba1c_plot(latest)
 # In[221]:
 
 
-#latest.loc["2020-04-15", "Sensor Glucose (mg/dL)"].interpolate().plot()
-#latest.loc["2020-04-15", "Sensor Glucose (mg/dL)"].plot()
+# latest.loc["2020-04-15", "Sensor Glucose (mg/dL)"].interpolate().plot()
+# latest.loc["2020-04-15", "Sensor Glucose (mg/dL)"].plot()
 latest.columns
 
 
@@ -446,7 +491,7 @@ sns.scatterplot(
 
 hourly_trends(latest, kind="mean")
 plt.figure()
-debasal = latest.loc[str(dates[-2]),"Basal Rate (U/h)"]
+debasal = latest.loc[str(dates[-2]), "Basal Rate (U/h)"]
 debasal.plot()
 plt.axhline(debasal.mean())
 
@@ -472,7 +517,7 @@ dist_plot(latest["Basal Rate (U/h)"], sig=3)
 # In[40]:
 
 
-#hourly_trends(basal, kind="std")
+# hourly_trends(basal, kind="std")
 
 
 # In[79]:
@@ -490,7 +535,7 @@ hourly_trends(basal)
 # In[81]:
 
 
-#hourly_trends(basal, kind="std")
+# hourly_trends(basal, kind="std")
 
 
 # In[82]:
@@ -518,7 +563,3 @@ foo.hour.to_series().hist()
 
 
 # In[ ]:
-
-
-
-

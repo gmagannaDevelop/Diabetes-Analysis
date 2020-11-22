@@ -28,55 +28,70 @@ from typing import List, Dict, NoReturn, Any, Callable, Union, Optional
 # Local imports
 from decorators import time_log, time_this
 from customobjs import objdict
+
 ################################################################################
+
+
+global DEFAULT_CONFIG_FILE
+global DEFAULT_LOCK_FILE
 
 
 def exit_explain_usage():
     """
-        Pretty self explanatory, isn't it ?
+    Pretty self explanatory, isn't it ?
     """
     print(f"\n\nUsage: \n $ python {sys.argv[0]} config_file")
     print(f"Config file should be .toml format : https://github.com/toml-lang/toml\n\n")
     exit()
+
+
 ##
 
+
 def is_non_zero_file(fpath):
-    """
-    """
+    """"""
     try:
         return os.path.isfile(fpath) and os.path.getsize(fpath) > 0
     except:
         return False
+
+
 ##
 
+
 def parse_config(config_file: str) -> objdict:
-    """
-    """
+    """"""
     try:
         with open(config_file, "r") as f:
             _config = toml.load(f, _dict=objdict)
         return _config
     except:
         raise
+
+
 ##
 
+
 def update_lock(lock_file: str, data: objdict) -> NoReturn:
-    """
-    """
+    """"""
     try:
         with open(lock_file, "w") as f:
             toml.dump(data, f)
     except:
         raise
+
+
 ##
 
-#@time_log("logs/preprocessing.jsonl")
-def time_indexed_df(df1: pd.core.frame.DataFrame, columname: str) -> pd.core.frame.DataFrame:
+# @time_log("logs/preprocessing.jsonl")
+def time_indexed_df(
+    df1: pd.core.frame.DataFrame, columname: str
+) -> pd.core.frame.DataFrame:
     """
-        Cast into a time-indexed dataframe.
-        df1 paramater should have a column containing datetime-like data,
-        which contains entries of type pandas._libs.tslibs.timestamps.Timestamp
-        or a string containing a compatible datetime (i.e. pd.to_datetime)
+    Cast into a time-indexed dataframe.
+    df1 paramater should have a column containing datetime-like data,
+    which contains entries of type pandas._libs.tslibs.timestamps.Timestamp
+    or a string containing a compatible datetime (i.e. pd.to_datetime)
     """
 
     _tmp = df1.copy()
@@ -91,19 +106,18 @@ def time_indexed_df(df1: pd.core.frame.DataFrame, columname: str) -> pd.core.fra
     _tmp = _tmp.sort_index()
 
     return _tmp
+
+
 ##
 
-#@time_log("logs/preprocessing.jsonl")
+# @time_log("logs/preprocessing.jsonl")
 def merge_on_duplicate_idx(
-    df: pd.core.frame.DataFrame,
-    mask: Any = np.nan,
-    verbose: bool = False
+    df: pd.core.frame.DataFrame, mask: Any = np.nan, verbose: bool = False
 ) -> pd.core.frame.DataFrame:
-    """
-    """
+    """"""
 
     y = df.copy()
-    y = y.mask( y == mask ).groupby(level=0).first()
+    y = y.mask(y == mask).groupby(level=0).first()
 
     if verbose:
         original_rows = df.shape[0]
@@ -116,17 +130,19 @@ def merge_on_duplicate_idx(
         print(f" Rows on pruned dataframe :\t\t{new_rows}")
 
     return y
+
+
 ##
 
-#@time_log("logs/preprocessing.jsonl")
+# @time_log("logs/preprocessing.jsonl")
 def hybrid_interpolator(
     data: pd.core.series.Series,
     mean: float = None,
     limit: float = None,
-    methods: List[str] = ['linear', 'spline'],
+    methods: List[str] = ["linear", "spline"],
     weights: List[float] = [0.65, 0.35],
-    direction: str = 'forward',
-    order: int = 2
+    direction: str = "forward",
+    order: int = 2,
 ) -> pd.core.series.Series:
     """
     Return a pandas.core.series.Series instance resulting of the weighted average
@@ -156,17 +172,21 @@ def hybrid_interpolator(
     predictions: List[float] = []
 
     if not np.isclose(sum(weight for weight in weights), 1):
-        raise Exception('Sum of weights must be equal to one!')
+        raise Exception("Sum of weights must be equal to one!")
 
     for met in methods:
-        if (met == 'spline') or (met == 'polynomial'):
-            predictions.append(data.interpolate(method=met, order=order, limit_direction=direction))
+        if (met == "spline") or (met == "polynomial"):
+            predictions.append(
+                data.interpolate(method=met, order=order, limit_direction=direction)
+            )
         else:
             predictions.append(data.interpolate(method=met, limit_direction=direction))
 
     linear: pd.core.series.Series = predictions[0]
     spline: pd.core.series.Series = predictions[1]
-    hybrid: pd.core.series.Series = weights[0]*predictions[0] + weights[1]*predictions[1]
+    hybrid: pd.core.series.Series = (
+        weights[0] * predictions[0] + weights[1] * predictions[1]
+    )
 
     corrected: pd.core.series.Series = copy.deepcopy(hybrid)
 
@@ -175,92 +195,98 @@ def hybrid_interpolator(
     if not limit:
         limit = 2 * data.std()
 
-    for idx, val in zip(hybrid[ np.isnan(data) ].index, hybrid[ np.isnan(data) ]):
+    for idx, val in zip(hybrid[np.isnan(data)].index, hybrid[np.isnan(data)]):
         if (val > mean + limit) or (val < mean - limit):
             corrected[idx] = linear[idx]
 
-    #df = copy.deepcopy(interpolated)
-    #print(df.isnull().astype(int).groupby(df.notnull().astype(int).cumsum()).sum())
+    # df = copy.deepcopy(interpolated)
+    # print(df.isnull().astype(int).groupby(df.notnull().astype(int).cumsum()).sum())
 
     return corrected
+
+
 ##
+
 
 def new_hybrid_interpolator(
     data: pd.core.series.Series,
-    methods: Dict[str,float] = {
-        'linear': 0.65,
-        'spline': 0.35
-    },
-    direction: str = 'forward',
+    methods: Dict[str, float] = {"linear": 0.65, "spline": 0.35},
+    direction: str = "forward",
     limit: int = 120,
     limit_area: Optional[str] = None,
     order: int = 2,
-    **kw
+    **kw,
 ) -> pd.core.series.Series:
-    """
-    """
+    """"""
 
-    limit_area = limit_area or 'inside'
+    limit_area = limit_area or "inside"
 
     weight_sum = sum(weight for weight in methods.values())
     if not np.isclose(weight_sum, 1):
-        raise Exception(f'Sum of weights {weight_sum} != 1')
+        raise Exception(f"Sum of weights {weight_sum} != 1")
 
-    resampled: Dict[str,pd.core.series.Series] = {}
+    resampled: Dict[str, pd.core.series.Series] = {}
 
     for key, weight in methods.items():
-        resampled.update({
-          key: weight * data.interpolate(
-              method=key,
-              order=order,
-              limit_area=limit_area,
-              limit=limit
-          )
-        })
+        resampled.update(
+            {
+                key: weight
+                * data.interpolate(
+                    method=key, order=order, limit_area=limit_area, limit=limit
+                )
+            }
+        )
 
-    return reduce(lambda x, y: x+y, resampled.values())
+    return reduce(lambda x, y: x + y, resampled.values())
+
+
 ##
+
 
 def add_time_periodicity(df: pd.DataFrame) -> NoReturn:
-    """
-    """
+    """"""
     # Coulmns to capture daily periodicity :
     T = 1439
-    min_res_t_series = pd.Series(df.index.hour*60 + df.index.minute)
-    df['hour'] = df.index.hour
-    df['minutes'] = min_res_t_series
-    df['x(t)'] = min_res_t_series.apply(lambda x: np.cos(2*np.pi*(x) / T))
-    df['y(t)'] = min_res_t_series.apply(lambda x: np.sin(2*np.pi*(x) / T))
+    min_res_t_series = pd.Series(df.index.hour * 60 + df.index.minute)
+    df["hour"] = df.index.hour
+    df["minutes"] = min_res_t_series
+    df["x(t)"] = min_res_t_series.apply(lambda x: np.cos(2 * np.pi * (x) / T))
+    df["y(t)"] = min_res_t_series.apply(lambda x: np.sin(2 * np.pi * (x) / T))
+
+
 ##
+
 
 def compute_time_periodicity(df: pd.DataFrame) -> NoReturn:
-    """
-    """
+    """"""
     # Coulmns to capture daily periodicity :
     T = 1439
-    min_res_t_series = pd.Series(df.index.hour*60 + df.index.minute)
-    _tmp = pd.DataFrame({
-        'hour': df.index.hour,
-        'minute': min_res_t_series,
-        'x(t)': min_res_t_series.apply(lambda x: np.cos(2*np.pi*x / T)),
-        'y(t)': min_res_t_series.apply(lambda x: np.sin(2*np.pi*x / T))
-    })
+    min_res_t_series = pd.Series(df.index.hour * 60 + df.index.minute)
+    _tmp = pd.DataFrame(
+        {
+            "hour": df.index.hour,
+            "minute": min_res_t_series,
+            "x(t)": min_res_t_series.apply(lambda x: np.cos(2 * np.pi * x / T)),
+            "y(t)": min_res_t_series.apply(lambda x: np.sin(2 * np.pi * x / T)),
+        }
+    )
     _tmp.index = df.index
     return _tmp
+
+
 ##
 
+
 def import_csv(
-    filename: str,
-    column: Optional[str] = None,
-    low_memory: bool = False
+    filename: str, column: Optional[str] = None, low_memory: bool = False
 ) -> pd.DataFrame:
     """
-        Import a csv file previously generated with this same script.
+    Import a csv file previously generated with this same script.
 
-        `column` optional parameter specifies the
-                 name of the column containing
-                 the datetime index.
-                 Defaults to 'DateTime'
+    `column` optional parameter specifies the
+             name of the column containing
+             the datetime index.
+             Defaults to 'DateTime'
     """
 
     column = column or "DateTime"
@@ -268,45 +294,52 @@ def import_csv(
     _y = time_indexed_df(_x, column)
 
     return _y
+
+
 ##
+
 
 def grep_idx(file_lines: List[str], the_string: str) -> List[int]:
     """
-        Function definition inpired by Dorian Grv :
-        https://stackoverflow.com/users/2444948/dorian-grv,
+    Function definition inpired by Dorian Grv :
+    https://stackoverflow.com/users/2444948/dorian-grv,
 
-        Originally used re.search in the context of this question:
-        https://stackoverflow.com/questions/4146009/python-get-list-indexes-using-regular-expression
+    Originally used re.search in the context of this question:
+    https://stackoverflow.com/questions/4146009/python-get-list-indexes-using-regular-expression
     """
 
     ide = [i for i, item in enumerate(file_lines) if item.startswith(the_string)]
     return ide
+
+
 ##
+
 
 def rename_files_sync():
-    """
-    """
+    """"""
+
+
 ##
 
 
-#@time_log("logs/preprocessing.jsonl")
+# @time_log("logs/preprocessing.jsonl")
 def preproc(config: objdict, file: str) -> NoReturn:
     """
-        Congfig file
+    Congfig file
 
-        this should eventually be renamed to preproc medtronic
+    this should eventually be renamed to preproc medtronic
 
-        From the first lines of the file we can get this kind of dict :
-        {
-            'Last Name': 'Maganna',
-            'First Name': 'Gustavo',
-            'Patient ID': nan,
-            'Start Date': '19/04/20 12:00:00 AM',
-            'End Date': '16/05/20 11:59:59 PM',
-            'Device': 'Serial Number',
-            'MiniMed 640G': 'NG1988812H',
-            ' MMT-1512/1712': nan
-        }
+    From the first lines of the file we can get this kind of dict :
+    {
+        'Last Name': 'Maganna',
+        'First Name': 'Gustavo',
+        'Patient ID': nan,
+        'Start Date': '19/04/20 12:00:00 AM',
+        'End Date': '16/05/20 11:59:59 PM',
+        'Device': 'Serial Number',
+        'MiniMed 640G': 'NG1988812H',
+        ' MMT-1512/1712': nan
+    }
 
     """
     in_file = os.path.join(config.locations.source, file)
@@ -316,17 +349,15 @@ def preproc(config: objdict, file: str) -> NoReturn:
 
     with open(in_file, "r") as f:
         # Read the actual data :
-        f_list = f.readlines()[config.file.specs.header_row_num-1:]
+        f_list = f.readlines()[config.file.specs.header_row_num - 1 :]
 
     idx_to_remove = grep_idx(f_list, "-------,")
     _tmp_ixs = []
     # Quadratic complexity :(
     for ix in idx_to_remove:
-        #print("remove")
-        _tmp_ixs.extend([ix-1, ix+1])
-    idx_to_remove.extend(
-        [i for i in _tmp_ixs if i in range(len(f_list))]
-    )
+        # print("remove")
+        _tmp_ixs.extend([ix - 1, ix + 1])
+    idx_to_remove.extend([i for i in _tmp_ixs if i in range(len(f_list))])
     # If we didn't sort and reverse, we'd be modifying the list's index order
     # i.e. not removing the desired elements but their neighbours instead.
     for i in reversed(sorted(idx_to_remove)):
@@ -340,7 +371,7 @@ def preproc(config: objdict, file: str) -> NoReturn:
     # Date-time indexing :
     x["DateTime"] = x[config.file.specs.date] + " " + x[config.file.specs.time]
     x = x.drop([config.file.specs.date, config.file.specs.time], axis=1)
-    y = time_indexed_df(x, 'DateTime')
+    y = time_indexed_df(x, "DateTime")
     if config.file.specs.dummy_index:
         y = y.drop(config.file.specs.dummy_index, axis=1)
     y.index = y.index.map(lambda t: t.replace(second=0))
@@ -351,21 +382,23 @@ def preproc(config: objdict, file: str) -> NoReturn:
     if config.tasks.interpolate:
         y = y.resample("1T").asfreq()
         y[config.file.specs.glycaemia_column] = new_hybrid_interpolator(
-            y[config.file.specs.glycaemia_column],
-            **config.interpolation.specs
+            y[config.file.specs.glycaemia_column], **config.interpolation.specs
         )
         # Only differentiate if we have interpolated, the definition won't be valid
         # as we need a constant, evenly-spaced temporal grid.
         if config.tasks.differentiate:
             _d = config.differentiation.specs.delta
             _w = config.differentiation.specs.window_size
-            y[f"d{_d}w{_w}"] = y[config.file.specs.glycaemia_column].diff(_d).rolling(_w).median()
-            y[f"Sd{_d}w{_w}"] = y[config.file.specs.glycaemia_column].diff(_d).rolling(_w).sum()
+            y[f"d{_d}w{_w}"] = (
+                y[config.file.specs.glycaemia_column].diff(_d).rolling(_w).median()
+            )
+            y[f"Sd{_d}w{_w}"] = (
+                y[config.file.specs.glycaemia_column].diff(_d).rolling(_w).sum()
+            )
 
     if config.tasks.interpolate_isig:
         y[config.file.specs.isig_column] = new_hybrid_interpolator(
-            y[config.file.specs.isig_column],
-            **config.interpolation.specs
+            y[config.file.specs.isig_column], **config.interpolation.specs
         )
 
     periodicity_df = compute_time_periodicity(y)
@@ -375,16 +408,18 @@ def preproc(config: objdict, file: str) -> NoReturn:
     y["Basal Rate (U/h)"].fillna(method="ffill", inplace=True)
 
     get_date = lambda x: x.split(" ")[0].replace("/", "-")
-    _st, _end = map(get_date, [_fi['Start Date'], _fi['End Date']])
-    reverse_date = lambda x: "-".join(list(reversed(x.split("-")))) 
+    _st, _end = map(get_date, [_fi["Start Date"], _fi["End Date"]])
+    reverse_date = lambda x: "-".join(list(reversed(x.split("-"))))
     uniform_date = lambda x: f"0{int(x)}" if int(x) < 10 else x
     _st, _end = map(reverse_date, [_st, _end])
     uniform_dates = lambda y: "-".join(map(uniform_date, y.split("-")))
     _st, _end = map(uniform_dates, [_st, _end])
     out_file = [
-        f"{_fi['MiniMed 640G']}", f"{_fi['Last Name']}",
-        f"{_fi['First Name']}", 
-        f"(til:{_end})", f"(from:{_st})"
+        f"{_fi['MiniMed 640G']}",
+        f"{_fi['Last Name']}",
+        f"{_fi['First Name']}",
+        f"(til:{_end})",
+        f"(from:{_st})",
     ]
     out_file = "_".join(out_file)
     if config.tasks.interpolate:
@@ -395,24 +430,22 @@ def preproc(config: objdict, file: str) -> NoReturn:
         out_file = os.path.join(config.locations.preprocessed, out_file)
 
     y.to_csv(out_file)
+
+
 ##
+
 
 @time_log("logs/preproc_main.jsonl")
 def main(config: objdict) -> NoReturn:
-    """
-    """
+    """"""
     global DEFAULT_LOCK_FILE
     if is_non_zero_file(DEFAULT_LOCK_FILE):
         history = parse_config(DEFAULT_LOCK_FILE)
     else:
-        history = objdict({
-            "files": objdict({
-                "processed": []
-            })
-        })
+        history = objdict({"files": objdict({"processed": []})})
         update_lock(DEFAULT_LOCK_FILE, history)
 
-    #get_csv_files = lambda loc: [os.path.join(loc, x) for x in os.listdir(loc) if x[-4:] == ".csv"]
+    # get_csv_files = lambda loc: [os.path.join(loc, x) for x in os.listdir(loc) if x[-4:] == ".csv"]
     get_csv_files = lambda loc: [x for x in os.listdir(loc) if x[-4:] == ".csv"]
 
     csv_files = get_csv_files(config.locations.source)
@@ -435,10 +468,14 @@ def main(config: objdict) -> NoReturn:
             for file in files_to_process:
                 _preproc(file)
         else:
-            print(f"\n\nParallel processing using {config.hardware.n_threads} threads ...")
-            with futures.ThreadPoolExecutor(max_workers=config.hardware.n_threads) as pool:
+            print(
+                f"\n\nParallel processing using {config.hardware.n_threads} threads ..."
+            )
+            with futures.ThreadPoolExecutor(
+                max_workers=config.hardware.n_threads
+            ) as pool:
                 pool.map(_preproc, files_to_process)
-        #list(map(_preproc, files_to_process))
+        # list(map(_preproc, files_to_process))
         # If the execution arrived to this point, we can safely
         # say that we've preprocessed the specified files
         history.files.processed += files_to_process
@@ -447,9 +484,11 @@ def main(config: objdict) -> NoReturn:
             update_lock(DEFAULT_LOCK_FILE, history)
     else:
         print("No files to process, please verify the following :")
-        print(f" CONFIG : {config_file} ")
+        print(f" CONFIG : {DEFAULT_CONFIG_FILE} ")
         print(f" LOCK :  {DEFAULT_LOCK_FILE} ")
         print(f" Source directory (parsed from CONFIG) : {config.locations.source}/")
+
+
 ##
 
 
@@ -467,8 +506,12 @@ if __name__ == "__main__":
             config = parse_config(DEFAULT_CONFIG_FILE)
             main(config)
         else:
-            print(f"Config file not specified, using default `{DEFAULT_CONFIG_FILE}`...")
-            print(f"Default `{DEFAULT_CONFIG_FILE}` not found in {os.path.abspath('.')}")
+            print(
+                f"Config file not specified, using default `{DEFAULT_CONFIG_FILE}`..."
+            )
+            print(
+                f"Default `{DEFAULT_CONFIG_FILE}` not found in {os.path.abspath('.')}"
+            )
             exit_explain_usage()
     else:
         if "toml" in sys.argv[1]:

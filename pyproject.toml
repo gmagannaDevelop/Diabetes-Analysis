@@ -21,6 +21,7 @@ google-auth-oauthlib = "^0.4.1"
 toml = "^0.10.0"
 pandasgui = "^0.2.5"
 psutil = "^5.7.3"
+vaex = "^3.0.0"
 
 [tool.poetry.dev-dependencies]
 
